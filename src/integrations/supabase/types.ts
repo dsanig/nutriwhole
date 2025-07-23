@@ -14,16 +14,282 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients_coaches: {
+        Row: {
+          assigned_at: string | null
+          client_id: string
+          coach_id: string
+          id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          client_id: string
+          coach_id: string
+          id?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          client_id?: string
+          coach_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_coaches_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_coaches_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_motivational_notes: {
+        Row: {
+          client_id: string
+          coach_id: string
+          created_at: string | null
+          id: string
+          message: string
+          note_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          coach_id: string
+          created_at?: string | null
+          id?: string
+          message: string
+          note_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          coach_id?: string
+          created_at?: string | null
+          id?: string
+          message?: string
+          note_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_motivational_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_motivational_notes_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_notes: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          meal_plan_id: string
+          note_text: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          meal_plan_id: string
+          note_text?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          meal_plan_id?: string
+          note_text?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_notes_meal_plan_id_fkey"
+            columns: ["meal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_plans: {
+        Row: {
+          client_id: string
+          coach_id: string
+          created_at: string | null
+          id: string
+          meal_type: string
+          plan_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          coach_id: string
+          created_at?: string | null
+          id?: string
+          meal_type: string
+          plan_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          coach_id?: string
+          created_at?: string | null
+          id?: string
+          meal_type?: string
+          plan_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plans_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_ingredients: {
+        Row: {
+          calories: number | null
+          carbs: number | null
+          cholesterol: number | null
+          created_at: string | null
+          fats: number | null
+          fiber: number | null
+          grams: number
+          id: string
+          ingredient_name: string
+          meal_plan_id: string
+          proteins: number | null
+          sodium: number | null
+        }
+        Insert: {
+          calories?: number | null
+          carbs?: number | null
+          cholesterol?: number | null
+          created_at?: string | null
+          fats?: number | null
+          fiber?: number | null
+          grams: number
+          id?: string
+          ingredient_name: string
+          meal_plan_id: string
+          proteins?: number | null
+          sodium?: number | null
+        }
+        Update: {
+          calories?: number | null
+          carbs?: number | null
+          cholesterol?: number | null
+          created_at?: string | null
+          fats?: number | null
+          fiber?: number | null
+          grams?: number
+          id?: string
+          ingredient_name?: string
+          meal_plan_id?: string
+          proteins?: number | null
+          sodium?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_ingredients_meal_plan_id_fkey"
+            columns: ["meal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_profile: {
+        Args: { _user_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          email: string
+          full_name: string
+          role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "coach" | "client"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +416,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "coach", "client"],
+    },
   },
 } as const
