@@ -21,8 +21,16 @@ const Layout = () => {
     );
   }
 
-  if (!user || !profile) {
+  if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Cargando perfil...</div>
+      </div>
+    );
   }
 
   const handleSignOut = async () => {
