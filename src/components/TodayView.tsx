@@ -201,7 +201,7 @@ const TodayView = ({ profile }: TodayViewProps) => {
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-blue-600">{Math.round(totals.carbs)}g</p>
-              <p className="text-sm text-muted-foreground">Hidratos</p>
+              <p className="text-sm text-muted-foreground">Hidratos de Carbono</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-green-600">{Math.round(totals.proteins)}g</p>
@@ -257,7 +257,7 @@ const TodayView = ({ profile }: TodayViewProps) => {
                       <tr className="border-b">
                         <th className="text-left p-2">Ingrediente</th>
                         <th className="text-center p-2">Gramos</th>
-                        <th className="text-center p-2">H. de C</th>
+                        <th className="text-center p-2">Hidratos de Carbono</th>
                         <th className="text-center p-2">Proteínas</th>
                         <th className="text-center p-2">Grasas</th>
                         <th className="text-center p-2">Kcal</th>

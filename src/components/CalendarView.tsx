@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Edit, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useAuth';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import ExcelUpload from './ExcelUpload';
+import MealEditor from './MealEditor';
 
 interface DaySummary {
   date: string;
@@ -42,6 +46,9 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
   const [monthData, setMonthData] = useState<DaySummary[]>([]);
   const [selectedDay, setSelectedDay] = useState<DetailedDay | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingMeal, setEditingMeal] = useState<any>(null);
+  const [editingDate, setEditingDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -203,12 +210,15 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
             <CardTitle className="text-xl">
               {format(currentDate, "MMMM yyyy", { locale: es })}
             </CardTitle>
-            <button 
-              onClick={() => navigateMonth('next')}
-              className="px-4 py-2 text-sm bg-secondary hover:bg-secondary/80 rounded"
-            >
-              Siguiente →
-            </button>
+            <div className="flex items-center gap-2">
+              <ExcelUpload profile={profile} onUploadComplete={fetchMonthData} />
+              <button 
+                onClick={() => navigateMonth('next')}
+                className="px-4 py-2 text-sm bg-secondary hover:bg-secondary/80 rounded"
+              >
+                Siguiente →
+              </button>
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -230,22 +240,34 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
               const isToday = isSameDay(date, new Date());
               
               return (
-                <button
+                <div
                   key={date.toISOString()}
-                  onClick={() => daySummary && fetchDayDetails(format(date, 'yyyy-MM-dd'))}
                   className={`
-                    p-3 text-left border rounded-lg transition-colors min-h-[100px]
+                    p-3 text-left border rounded-lg transition-colors min-h-[100px] relative
                     ${isToday ? 'ring-2 ring-primary' : ''}
-                    ${daySummary ? 'hover:bg-accent cursor-pointer' : 'text-muted-foreground cursor-default'}
                     ${!isSameMonth(date, currentDate) ? 'opacity-50' : ''}
                   `}
                 >
-                  <div className="font-medium text-sm mb-1">
-                    {format(date, 'd')}
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="font-medium text-sm">
+                      {format(date, 'd')}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0"
+                      onClick={() => {
+                        setEditingDate(format(date, 'yyyy-MM-dd'));
+                        setEditingMeal(null);
+                        setIsEditorOpen(true);
+                      }}
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
                   </div>
                   
-                  {daySummary && (
-                    <div className="space-y-1">
+                  {daySummary ? (
+                    <div className="space-y-1 cursor-pointer" onClick={() => fetchDayDetails(format(date, 'yyyy-MM-dd'))}>
                       <Badge variant="outline" className="text-xs">
                         {Math.round(daySummary.totalCalories)} kcal
                       </Badge>
@@ -253,8 +275,12 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
                         {daySummary.mealCount} comidas
                       </div>
                     </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      Sin comidas
+                    </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
@@ -288,7 +314,20 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
               {selectedDay.meals.map((meal, index) => (
                 <Card key={index}>
                   <CardHeader>
-                    <CardTitle className="capitalize">{meal.meal_type}</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="capitalize">{meal.meal_type}</CardTitle>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingMeal(meal);
+                          setEditingDate(selectedDay.date);
+                          setIsEditorOpen(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="overflow-x-auto">
@@ -297,7 +336,7 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
                           <tr className="border-b">
                             <th className="text-left p-2">Ingrediente</th>
                             <th className="text-center p-2">Gramos</th>
-                            <th className="text-center p-2">H. de C</th>
+                            <th className="text-center p-2">Hidratos de Carbono</th>
                             <th className="text-center p-2">Proteínas</th>
                             <th className="text-center p-2">Grasas</th>
                             <th className="text-center p-2">Kcal</th>
@@ -331,6 +370,25 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Meal Editor */}
+      <MealEditor
+        profile={profile}
+        date={editingDate}
+        meal={editingMeal}
+        isOpen={isEditorOpen}
+        onClose={() => {
+          setIsEditorOpen(false);
+          setEditingMeal(null);
+          setEditingDate('');
+        }}
+        onSave={() => {
+          fetchMonthData();
+          if (selectedDay) {
+            fetchDayDetails(selectedDay.date);
+          }
+        }}
+      />
     </div>
   );
 };
