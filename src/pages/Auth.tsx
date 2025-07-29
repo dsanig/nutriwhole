@@ -20,7 +20,7 @@ const Auth = () => {
     email: '', 
     password: '', 
     fullName: '', 
-    role: 'client' as 'admin' | 'coach' | 'client' 
+    role: 'client' as 'coach' | 'client' 
   });
 
   if (loading) {
@@ -83,7 +83,10 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">NutritiWhole</CardTitle>
+          <CardTitle className="text-2xl font-bold">
+            NutriWhole
+            <span className="text-sm font-normal text-muted-foreground ml-2">by INMEDSA</span>
+          </CardTitle>
           <CardDescription>
             Gestión de planes nutricionales
           </CardDescription>
@@ -168,7 +171,7 @@ const Auth = () => {
                   <Label htmlFor="signup-role">Tipo de cuenta</Label>
                   <Select 
                     value={signUpData.role} 
-                    onValueChange={(value: 'admin' | 'coach' | 'client') => 
+                    onValueChange={(value: 'coach' | 'client') => 
                       setSignUpData({ ...signUpData, role: value })
                     }
                   >
@@ -178,7 +181,6 @@ const Auth = () => {
                     <SelectContent>
                       <SelectItem value="client">Cliente</SelectItem>
                       <SelectItem value="coach">Coach/Nutricionista</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
