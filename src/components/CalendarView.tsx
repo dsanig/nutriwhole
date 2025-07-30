@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Edit, Plus } from 'lucide-react';
+import { Edit, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useAuth';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
@@ -23,6 +23,7 @@ interface DaySummary {
 interface DetailedDay {
   date: string;
   meals: Array<{
+    id: string;
     meal_type: string;
     ingredients: Array<{
       ingredient_name: string;
@@ -121,6 +122,7 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
       const { data: mealPlansData, error: mealError } = await supabase
         .from('meal_plans')
         .select(`
+          id,
           meal_type,
           plan_ingredients (
             ingredient_name,
@@ -150,6 +152,7 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
       const detailedDay: DetailedDay = {
         date,
         meals: mealPlansData?.map(meal => ({
+          id: meal.id,
           meal_type: meal.meal_type,
           ingredients: meal.plan_ingredients || [],
           notes: meal.daily_notes?.[0]?.note_text || ''
@@ -185,6 +188,43 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
       }
       return newDate;
     });
+  };
+
+  const deleteMeal = async (mealId: string) => {
+    try {
+      // Delete ingredients first
+      const { error: deleteIngredientsError } = await supabase
+        .from('plan_ingredients')
+        .delete()
+        .eq('meal_plan_id', mealId);
+
+      if (deleteIngredientsError) throw deleteIngredientsError;
+
+      // Delete daily notes
+      const { error: deleteNotesError } = await supabase
+        .from('daily_notes')
+        .delete()
+        .eq('meal_plan_id', mealId);
+
+      if (deleteNotesError) throw deleteNotesError;
+
+      // Delete meal plan
+      const { error: deleteMealError } = await supabase
+        .from('meal_plans')
+        .delete()
+        .eq('id', mealId);
+
+      if (deleteMealError) throw deleteMealError;
+
+      // Refresh data
+      fetchMonthData();
+      if (selectedDay) {
+        fetchDayDetails(selectedDay.date);
+      }
+
+    } catch (error) {
+      console.error('Error deleting meal:', error);
+    }
   };
 
   if (loading) {
@@ -316,17 +356,26 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="capitalize">{meal.meal_type}</CardTitle>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditingMeal(meal);
-                          setEditingDate(selectedDay.date);
-                          setIsEditorOpen(true);
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingMeal(meal);
+                            setEditingDate(selectedDay.date);
+                            setIsEditorOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteMeal(meal.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
