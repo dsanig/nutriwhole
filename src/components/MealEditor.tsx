@@ -378,7 +378,7 @@ const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave }: MealEditor
                 Cancelar
               </Button>
               <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? "Guardando..." : meal?.id ? "Actualizar" : "Crear"}
+                {isSaving ? "Guardando..." : meal?.id ? "Guardar cambios" : "Crear comida"}
               </Button>
             </div>
           </div>
