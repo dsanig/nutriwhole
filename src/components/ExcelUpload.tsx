@@ -52,7 +52,7 @@ const ExcelUpload = ({ profile, onUploadComplete }: ExcelUploadProps) => {
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
           const parsedData: ParsedMealData[] = [];
-          const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados', 'Domingo'];
+          const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
           const mealTypes = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena'];
 
           // Find header row with days
@@ -96,8 +96,13 @@ const ExcelUpload = ({ profile, onUploadComplete }: ExcelUploadProps) => {
               const ingredients = parseIngredients(cellContent);
               if (ingredients.length > 0) {
                 const dayIndex = daysOfWeek.indexOf(dayName);
+                
+                // Calculate date considering week number
+                const weekNumber = week === 'Semana 1' ? 0 : 1; // Handle both weeks
+                const totalDayOffset = (weekNumber * 7) + dayIndex;
+                
                 const dateForDay = new Date(startDate!);
-                dateForDay.setDate(startDate!.getDate() + dayIndex);
+                dateForDay.setDate(startDate!.getDate() + totalDayOffset);
 
                 parsedData.push({
                   date: format(dateForDay, 'yyyy-MM-dd'),
@@ -241,7 +246,7 @@ const ExcelUpload = ({ profile, onUploadComplete }: ExcelUploadProps) => {
 
       // Delete existing meal plans for the date range
       const endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + 6); // One week
+      endDate.setDate(startDate.getDate() + 13); // Two weeks (14 days)
       
       const { error: deleteError } = await supabase
         .from('meal_plans')
