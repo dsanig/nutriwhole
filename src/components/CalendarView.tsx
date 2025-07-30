@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Edit, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useAuth';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, startOfWeek, endOfWeek, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import ExcelUpload from './ExcelUpload';
 import MealEditor from './MealEditor';
@@ -170,7 +170,13 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
   const getDaysInMonth = () => {
     const start = startOfMonth(currentDate);
     const end = endOfMonth(currentDate);
-    return eachDayOfInterval({ start, end });
+    
+    // Get the start of the week for the first day of the month
+    // We want Monday to be the first day of the week (weekStartsOn: 1)
+    const calendarStart = startOfWeek(start, { weekStartsOn: 1 });
+    const calendarEnd = endOfWeek(end, { weekStartsOn: 1 });
+    
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   };
 
   const getDaySummary = (date: Date): DaySummary | null => {
