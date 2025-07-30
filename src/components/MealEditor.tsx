@@ -39,6 +39,7 @@ const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave }: MealEditor
   const [mealType, setMealType] = useState(meal?.meal_type || 'desayuno');
   const [ingredients, setIngredients] = useState<Ingredient[]>(meal?.ingredients || []);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -186,6 +187,47 @@ const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave }: MealEditor
     }
   };
 
+  const handleDelete = async () => {
+    if (!meal?.id) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete ingredients first
+      const { error: deleteIngredientsError } = await supabase
+        .from('plan_ingredients')
+        .delete()
+        .eq('meal_plan_id', meal.id);
+
+      if (deleteIngredientsError) throw deleteIngredientsError;
+
+      // Delete meal plan
+      const { error: deleteMealError } = await supabase
+        .from('meal_plans')
+        .delete()
+        .eq('id', meal.id);
+
+      if (deleteMealError) throw deleteMealError;
+
+      toast({
+        title: "¡Éxito!",
+        description: "Comida eliminada correctamente"
+      });
+
+      onSave();
+      onClose();
+
+    } catch (error) {
+      console.error('Error deleting meal:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al eliminar la comida"
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -320,13 +362,25 @@ const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave }: MealEditor
           </div>
 
           {/* Action buttons */}
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Guardando..." : meal?.id ? "Actualizar" : "Crear"}
-            </Button>
+          <div className="flex justify-between items-center">
+            {meal?.id && (
+              <Button 
+                variant="destructive" 
+                onClick={handleDelete} 
+                disabled={isDeleting}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {isDeleting ? "Eliminando..." : "Eliminar comida"}
+              </Button>
+            )}
+            <div className="flex space-x-2 ml-auto">
+              <Button variant="outline" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "Guardando..." : meal?.id ? "Actualizar" : "Crear"}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
