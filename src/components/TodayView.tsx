@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -159,6 +160,50 @@ const TodayView = ({ profile }: TodayViewProps) => {
     }
   };
 
+  const deleteMeal = async (mealPlanId: string) => {
+    try {
+      // Delete ingredients first
+      const { error: deleteIngredientsError } = await supabase
+        .from('plan_ingredients')
+        .delete()
+        .eq('meal_plan_id', mealPlanId);
+
+      if (deleteIngredientsError) throw deleteIngredientsError;
+
+      // Delete daily notes
+      const { error: deleteNotesError } = await supabase
+        .from('daily_notes')
+        .delete()
+        .eq('meal_plan_id', mealPlanId);
+
+      if (deleteNotesError) throw deleteNotesError;
+
+      // Delete meal plan
+      const { error: deleteMealError } = await supabase
+        .from('meal_plans')
+        .delete()
+        .eq('id', mealPlanId);
+
+      if (deleteMealError) throw deleteMealError;
+
+      toast({
+        title: "Comida eliminada",
+        description: "La comida ha sido eliminada correctamente"
+      });
+
+      // Refresh data
+      fetchTodayData();
+
+    } catch (error) {
+      console.error('Error deleting meal:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar la comida"
+      });
+    }
+  };
+
   const calculateTotals = () => {
     const totals = { calories: 0, carbs: 0, proteins: 0, fats: 0 };
     
@@ -244,9 +289,18 @@ const TodayView = ({ profile }: TodayViewProps) => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="capitalize">{meal.meal_type}</CardTitle>
-                  <Badge variant="outline">
-                    {meal.ingredients.reduce((sum, ing) => sum + ing.calories, 0).toFixed(0)} kcal
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">
+                      {meal.ingredients.reduce((sum, ing) => sum + ing.calories, 0).toFixed(0)} kcal
+                    </Badge>
+                    <Button
+                      onClick={() => deleteMeal(meal.id)}
+                      size="sm"
+                      variant="destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
