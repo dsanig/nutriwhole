@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import TodayView from '@/components/TodayView';
 import CalendarView from '@/components/CalendarView';
 import AdminPanel from '@/components/AdminPanel';
+import CoachPanel from '@/components/CoachPanel';
 
 const Layout = () => {
   const { user, profile, signOut, loading } = useAuth();
@@ -76,7 +77,10 @@ const Layout = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="today" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className={`grid w-full mb-6 ${
+            profile.role === 'admin' ? 'grid-cols-3' : 
+            profile.role === 'coach' ? 'grid-cols-3' : 'grid-cols-2'
+          }`}>
             <TabsTrigger value="today" className="flex items-center gap-2">
               <Home className="w-4 h-4" />
               Hoy
@@ -89,6 +93,12 @@ const Layout = () => {
               <TabsTrigger value="admin" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
                 Administración
+              </TabsTrigger>
+            )}
+            {profile.role === 'coach' && (
+              <TabsTrigger value="coach" className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Mis Clientes
               </TabsTrigger>
             )}
           </TabsList>
@@ -104,6 +114,12 @@ const Layout = () => {
           {profile.role === 'admin' && (
             <TabsContent value="admin">
               <AdminPanel />
+            </TabsContent>
+          )}
+
+          {profile.role === 'coach' && (
+            <TabsContent value="coach">
+              <CoachPanel />
             </TabsContent>
           )}
         </Tabs>

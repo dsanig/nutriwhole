@@ -10,6 +10,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSam
 import { es } from 'date-fns/locale';
 import ExcelUpload from './ExcelUpload';
 import MealEditor from './MealEditor';
+import ClientSelector from '@/components/ClientSelector';
 
 interface DaySummary {
   date: string;
@@ -48,13 +49,18 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
   const [selectedDay, setSelectedDay] = useState<DetailedDay | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [editingMeal, setEditingMeal] = useState<any>(null);
   const [editingDate, setEditingDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchMonthData();
-  }, [currentDate, profile.id]);
+    if (profile.role === 'coach' && selectedClientId) {
+      fetchMonthData();
+    } else if (profile.role !== 'coach') {
+      fetchMonthData();
+    }
+  }, [currentDate, profile.id, selectedClientId]);
 
   const fetchMonthData = async () => {
     try {
@@ -76,7 +82,7 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
             calories
           )
         `)
-        .eq('client_id', profile.id)
+        .eq('client_id', profile.role === 'coach' ? selectedClientId : profile.id)
         .gte('plan_date', startDate)
         .lte('plan_date', endDate);
 
@@ -136,7 +142,7 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
             note_text
           )
         `)
-        .eq('client_id', profile.id)
+        .eq('client_id', profile.role === 'coach' ? selectedClientId : profile.id)
         .eq('plan_date', date);
 
       if (mealError) throw mealError;
@@ -145,7 +151,7 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
       const { data: coachNoteData } = await supabase
         .from('coach_motivational_notes')
         .select('message')
-        .eq('client_id', profile.id)
+        .eq('client_id', profile.role === 'coach' ? selectedClientId : profile.id)
         .eq('note_date', date)
         .single();
 
@@ -243,6 +249,13 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Client Selector for Coaches */}
+      <ClientSelector
+        profile={profile}
+        selectedClientId={selectedClientId}
+        onClientChange={setSelectedClientId}
+      />
+      
       {/* Calendar Header */}
       <Card>
         <CardHeader>
@@ -432,6 +445,7 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
         date={editingDate}
         meal={editingMeal}
         isOpen={isEditorOpen}
+        selectedClientId={selectedClientId}
         onClose={() => {
           setIsEditorOpen(false);
           setEditingMeal(null);

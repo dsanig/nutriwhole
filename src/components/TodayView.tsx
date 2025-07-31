@@ -9,6 +9,7 @@ import { Profile } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import ClientSelector from '@/components/ClientSelector';
 
 interface MealPlan {
   id: string;
@@ -37,14 +38,19 @@ const TodayView = ({ profile }: TodayViewProps) => {
   const [motivationalNote, setMotivationalNote] = useState<MotivationalNote | null>(null);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const today = new Date();
   const todayStr = format(today, 'yyyy-MM-dd');
 
   useEffect(() => {
-    fetchTodayData();
-  }, [profile.id]);
+    if (profile.role === 'coach' && selectedClientId) {
+      fetchTodayData();
+    } else if (profile.role !== 'coach') {
+      fetchTodayData();
+    }
+  }, [profile.id, selectedClientId]);
 
   const fetchTodayData = async () => {
     try {
@@ -66,7 +72,7 @@ const TodayView = ({ profile }: TodayViewProps) => {
             note_text
           )
         `)
-        .eq('client_id', profile.id)
+        .eq('client_id', profile.role === 'coach' ? selectedClientId : profile.id)
         .eq('plan_date', todayStr);
 
       if (mealError) throw mealError;
@@ -88,7 +94,7 @@ const TodayView = ({ profile }: TodayViewProps) => {
       });
       setNotes(initialNotes);
 
-      // Fetch motivational note from coach
+      // Fetch motivational note from coach (only for clients)
       if (profile.role === 'client') {
         const { data: motivationalData } = await supabase
           .from('coach_motivational_notes')
@@ -121,7 +127,7 @@ const TodayView = ({ profile }: TodayViewProps) => {
         .from('daily_notes')
         .select('id')
         .eq('meal_plan_id', mealPlanId)
-        .eq('client_id', profile.id)
+        .eq('client_id', profile.role === 'coach' ? selectedClientId : profile.id)
         .single();
 
       if (existingNote) {
@@ -137,7 +143,7 @@ const TodayView = ({ profile }: TodayViewProps) => {
         const { error } = await supabase
           .from('daily_notes')
           .insert({
-            client_id: profile.id,
+            client_id: profile.role === 'coach' ? selectedClientId : profile.id,
             meal_plan_id: mealPlanId,
             note_text: noteText
           });
@@ -231,6 +237,12 @@ const TodayView = ({ profile }: TodayViewProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Client Selector for Coaches */}
+      <ClientSelector
+        profile={profile}
+        selectedClientId={selectedClientId}
+        onClientChange={setSelectedClientId}
+      />
       {/* Header with date and totals */}
       <Card>
         <CardHeader>

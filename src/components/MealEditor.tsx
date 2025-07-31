@@ -33,9 +33,10 @@ interface MealEditorProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
+  selectedClientId?: string | null;
 }
 
-const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave }: MealEditorProps) => {
+const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave, selectedClientId }: MealEditorProps) => {
   const [mealType, setMealType] = useState(meal?.meal_type || 'desayuno');
   const [ingredients, setIngredients] = useState<Ingredient[]>(meal?.ingredients || []);
   const [isSaving, setIsSaving] = useState(false);
@@ -139,8 +140,8 @@ const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave }: MealEditor
         const { data: mealPlan, error: mealError } = await supabase
           .from('meal_plans')
           .insert({
-            client_id: profile.id,
-            coach_id: profile.id, // For now, assuming self-management
+            client_id: profile.role === 'coach' ? selectedClientId : profile.id,
+            coach_id: profile.role === 'coach' ? profile.id : profile.id,
             plan_date: date,
             meal_type: mealType
           })
