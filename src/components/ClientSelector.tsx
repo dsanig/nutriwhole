@@ -32,33 +32,43 @@ const ClientSelector = ({ profile, selectedClientId, onClientChange }: ClientSel
 
   const fetchCoachClients = async () => {
     try {
-      const { data: assignedClients, error } = await supabase
+      // Get assigned clients with manual join
+      const { data: assignmentData, error: assignmentError } = await supabase
         .from('clients_coaches')
-        .select(`
-          client_id,
-          profiles!clients_coaches_client_id_fkey (
-            id,
-            user_id,
-            email,
-            full_name
-          )
-        `)
+        .select('client_id')
         .eq('coach_id', profile.id);
 
-      if (error) throw error;
+      if (assignmentError) throw assignmentError;
 
-      const clientsData = assignedClients?.map(assignment => {
-        if (!assignment.profiles) {
+      if (!assignmentData || assignmentData.length === 0) {
+        setClients([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get client profiles separately
+      const clientIds = assignmentData.map(assignment => assignment.client_id);
+      const { data: clientProfiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, user_id, email, full_name')
+        .in('id', clientIds);
+
+      if (profileError) throw profileError;
+
+      // Combine assignment data with profiles
+      const clientsData = assignmentData.map(assignment => {
+        const profile = clientProfiles?.find(p => p.id === assignment.client_id);
+        if (!profile) {
           console.warn('Profile not found for client_id:', assignment.client_id);
           return null;
         }
         return {
-          id: assignment.profiles.id,
-          user_id: assignment.profiles.user_id,
-          email: assignment.profiles.email,
-          full_name: assignment.profiles.full_name
+          id: profile.id,
+          user_id: profile.user_id,
+          email: profile.email,
+          full_name: profile.full_name
         };
-      }).filter(Boolean) || [];
+      }).filter(Boolean);
 
       setClients(clientsData);
 
