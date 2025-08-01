@@ -60,13 +60,19 @@ const CoachPanel = () => {
 
       if (assignedError) throw assignedError;
 
-      const clientsData = assignedClients?.map(assignment => ({
-        id: assignment.profiles.id,
-        user_id: assignment.profiles.user_id,
-        email: assignment.profiles.email,
-        full_name: assignment.profiles.full_name,
-        assigned_at: assignment.assigned_at
-      })) || [];
+      const clientsData = assignedClients?.map(assignment => {
+        if (!assignment.profiles) {
+          console.warn('Profile not found for client_id:', assignment.client_id);
+          return null;
+        }
+        return {
+          id: assignment.profiles.id,
+          user_id: assignment.profiles.user_id,
+          email: assignment.profiles.email,
+          full_name: assignment.profiles.full_name,
+          assigned_at: assignment.assigned_at
+        };
+      }).filter(Boolean) || [];
 
       setClients(clientsData);
 

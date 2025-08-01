@@ -47,12 +47,18 @@ const ClientSelector = ({ profile, selectedClientId, onClientChange }: ClientSel
 
       if (error) throw error;
 
-      const clientsData = assignedClients?.map(assignment => ({
-        id: assignment.profiles.id,
-        user_id: assignment.profiles.user_id,
-        email: assignment.profiles.email,
-        full_name: assignment.profiles.full_name
-      })) || [];
+      const clientsData = assignedClients?.map(assignment => {
+        if (!assignment.profiles) {
+          console.warn('Profile not found for client_id:', assignment.client_id);
+          return null;
+        }
+        return {
+          id: assignment.profiles.id,
+          user_id: assignment.profiles.user_id,
+          email: assignment.profiles.email,
+          full_name: assignment.profiles.full_name
+        };
+      }).filter(Boolean) || [];
 
       setClients(clientsData);
 
