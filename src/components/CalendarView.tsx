@@ -55,9 +55,13 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (profile.role === 'coach' && selectedClientId) {
-      fetchMonthData();
-    } else if (profile.role !== 'coach') {
+    if (profile.role === 'coach') {
+      if (selectedClientId) {
+        fetchMonthData();
+      } else {
+        setLoading(false); // Stop loading if no client selected
+      }
+    } else {
       fetchMonthData();
     }
   }, [currentDate, profile.id, selectedClientId]);

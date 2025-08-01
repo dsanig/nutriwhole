@@ -72,11 +72,16 @@ const CoachPanel = () => {
 
       // Get available clients (not assigned to this coach)
       const assignedClientIds = clientsData.map(client => client.id);
-      const { data: allClients, error: allClientsError } = await supabase
+      let availableClientsQuery = supabase
         .from('profiles')
         .select('id, user_id, email, full_name')
-        .eq('role', 'client')
-        .not('id', 'in', `(${assignedClientIds.join(',') || 'null'})`);
+        .eq('role', 'client');
+      
+      if (assignedClientIds.length > 0) {
+        availableClientsQuery = availableClientsQuery.not('id', 'in', `(${assignedClientIds.join(',')})`);
+      }
+      
+      const { data: allClients, error: allClientsError } = await availableClientsQuery;
 
       if (allClientsError) throw allClientsError;
 

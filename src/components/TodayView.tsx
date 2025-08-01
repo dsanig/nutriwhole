@@ -45,9 +45,13 @@ const TodayView = ({ profile }: TodayViewProps) => {
   const todayStr = format(today, 'yyyy-MM-dd');
 
   useEffect(() => {
-    if (profile.role === 'coach' && selectedClientId) {
-      fetchTodayData();
-    } else if (profile.role !== 'coach') {
+    if (profile.role === 'coach') {
+      if (selectedClientId) {
+        fetchTodayData();
+      } else {
+        setLoading(false); // Stop loading if no client selected
+      }
+    } else {
       fetchTodayData();
     }
   }, [profile.id, selectedClientId]);
