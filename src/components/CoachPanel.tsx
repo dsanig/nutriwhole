@@ -43,15 +43,19 @@ const CoachPanel = () => {
 
       if (coachError) throw coachError;
 
+      console.log('Coach profile:', coachProfile);
+
       // Get assigned clients with manual join
       const { data: assignmentData, error: assignmentError } = await supabase
         .from('clients_coaches')
         .select('client_id, assigned_at')
         .eq('coach_id', coachProfile.id);
 
+      console.log('Assignment data:', assignmentData);
       if (assignmentError) throw assignmentError;
 
       if (!assignmentData || assignmentData.length === 0) {
+        console.log('No assignments found for coach');
         setClients([]);
         setAvailableClients([]);
         setLoading(false);
@@ -60,11 +64,14 @@ const CoachPanel = () => {
 
       // Get client profiles separately
       const clientIds = assignmentData.map(assignment => assignment.client_id);
+      console.log('Client IDs:', clientIds);
+      
       const { data: clientProfiles, error: profileError } = await supabase
         .from('profiles')
         .select('id, user_id, email, full_name')
         .in('id', clientIds);
 
+      console.log('Client profiles:', clientProfiles);
       if (profileError) throw profileError;
 
       // Combine assignment data with profiles

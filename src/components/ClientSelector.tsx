@@ -32,12 +32,15 @@ const ClientSelector = ({ profile, selectedClientId, onClientChange }: ClientSel
 
   const fetchCoachClients = async () => {
     try {
+      console.log('Fetching clients for coach:', profile.id);
+      
       // Get assigned clients with manual join
       const { data: assignmentData, error: assignmentError } = await supabase
         .from('clients_coaches')
         .select('client_id')
         .eq('coach_id', profile.id);
 
+      console.log('Assignment data (ClientSelector):', assignmentData);
       if (assignmentError) throw assignmentError;
 
       if (!assignmentData || assignmentData.length === 0) {
