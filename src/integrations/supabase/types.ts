@@ -270,6 +270,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_coach_view_client_profile: {
+        Args: { _client_profile_id: string }
+        Returns: boolean
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
