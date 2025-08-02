@@ -27,11 +27,14 @@ export const useAuth = () => {
           // Fetch user profile
           const fetchProfile = async () => {
             try {
+              console.log('Fetching profile for user:', session.user.id);
               const { data: profile, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('user_id', session.user.id)
                 .maybeSingle();
+              
+              console.log('Profile fetch result:', { profile, error });
               
               if (error) {
                 console.error('Error fetching profile:', error);
