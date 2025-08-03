@@ -21,9 +21,11 @@ interface Client {
 
 const CoachPanel = () => {
   const [clients, setClients] = useState<Client[]>([]);
-  const [availableClients, setAvailableClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newClientEmail, setNewClientEmail] = useState('');
+  const [newClientName, setNewClientName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -57,7 +59,6 @@ const CoachPanel = () => {
       if (!assignmentData || assignmentData.length === 0) {
         console.log('No assignments found for coach');
         setClients([]);
-        setAvailableClients([]);
         setLoading(false);
         return;
       }
@@ -92,26 +93,6 @@ const CoachPanel = () => {
 
       setClients(clientsData);
 
-      // Get available clients (not assigned to this coach)
-      const assignedClientIds = clientsData.map(client => client.id);
-      let availableClientsQuery = supabase
-        .from('profiles')
-        .select('id, user_id, email, full_name')
-        .eq('role', 'client');
-      
-      if (assignedClientIds.length > 0) {
-        availableClientsQuery = availableClientsQuery.not('id', 'in', `(${assignedClientIds.join(',')})`);
-      }
-      
-      const { data: allClients, error: allClientsError } = await availableClientsQuery;
-
-      if (allClientsError) throw allClientsError;
-
-      setAvailableClients((allClients || []).map(client => ({
-        ...client,
-        assigned_at: ''
-      })));
-
     } catch (error) {
       console.error('Error fetching coach clients:', error);
       toast({
@@ -124,8 +105,19 @@ const CoachPanel = () => {
     }
   };
 
-  const assignClient = async (clientId: string) => {
+  const createNewClient = async () => {
+    if (!newClientEmail.trim() || !newClientName.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Por favor completa todos los campos"
+      });
+      return;
+    }
+
     try {
+      setIsCreating(true);
+
       // Get current coach profile
       const { data: coachProfile, error: coachError } = await supabase
         .from('profiles')
@@ -135,30 +127,68 @@ const CoachPanel = () => {
 
       if (coachError) throw coachError;
 
-      const { error } = await supabase
+      // Create new user account with temporary password
+      const tempPassword = Math.random().toString(36).slice(-12) + 'A1!';
+      
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newClientEmail,
+        password: tempPassword,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: newClientName,
+            role: 'client'
+          }
+        }
+      });
+
+      if (authError) throw authError;
+
+      if (!authData.user) {
+        throw new Error('No se pudo crear el usuario');
+      }
+
+      // Wait a moment for the profile to be created by the trigger
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Get the created client profile
+      const { data: clientProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Assign the client to the coach
+      const { error: assignError } = await supabase
         .from('clients_coaches')
         .insert({
           coach_id: coachProfile.id,
-          client_id: clientId
+          client_id: clientProfile.id
         });
 
-      if (error) throw error;
+      if (assignError) throw assignError;
 
       toast({
-        title: "Cliente asignado",
-        description: "El cliente ha sido asignado exitosamente"
+        title: "Cliente creado",
+        description: `Cliente ${newClientName} ha sido creado y asignado exitosamente`
       });
 
-      setIsAddDialogOpen(false);
+      setIsCreateDialogOpen(false);
+      setNewClientEmail('');
+      setNewClientName('');
       fetchCoachClients();
 
     } catch (error) {
-      console.error('Error assigning client:', error);
+      console.error('Error creating client:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo asignar el cliente"
+        description: "No se pudo crear el cliente"
       });
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -215,45 +245,56 @@ const CoachPanel = () => {
               <Users className="w-5 h-5" />
               <CardTitle>Gestión de Clientes</CardTitle>
             </div>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
-                  Asignar Cliente
+                  Crear Nuevo Cliente
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Asignar Cliente</DialogTitle>
+                  <DialogTitle>Crear Nuevo Cliente</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label>Clientes Disponibles</Label>
-                    {availableClients.length === 0 ? (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        No hay clientes disponibles para asignar
-                      </p>
-                    ) : (
-                      <div className="space-y-2 mt-2">
-                        {availableClients.map((client) => (
-                          <div
-                            key={client.id}
-                            className="flex items-center justify-between p-3 border rounded-lg"
-                          >
-                            <div>
-                              <p className="font-medium">{client.full_name || client.email}</p>
-                              <p className="text-sm text-muted-foreground">{client.email}</p>
-                            </div>
-                            <Button
-                              size="sm"
-                              onClick={() => assignClient(client.id)}
-                            >
-                              Asignar
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <Label htmlFor="clientName">Nombre Completo</Label>
+                    <Input
+                      id="clientName"
+                      type="text"
+                      placeholder="Nombre del cliente"
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="clientEmail">Email</Label>
+                    <Input
+                      id="clientEmail"
+                      type="email"
+                      placeholder="email@ejemplo.com"
+                      value={newClientEmail}
+                      onChange={(e) => setNewClientEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 mt-6">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsCreateDialogOpen(false);
+                        setNewClientEmail('');
+                        setNewClientName('');
+                      }}
+                      disabled={isCreating}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={createNewClient}
+                      disabled={isCreating}
+                    >
+                      {isCreating ? 'Creando...' : 'Crear Cliente'}
+                    </Button>
                   </div>
                 </div>
               </DialogContent>
@@ -266,13 +307,13 @@ const CoachPanel = () => {
               <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-medium mb-2">No tienes clientes asignados</h3>
               <p className="text-muted-foreground mb-4">
-                Comienza asignando tu primer cliente para gestionar sus planes nutricionales
+                Comienza creando tu primer cliente para gestionar sus planes nutricionales
               </p>
-              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="w-4 h-4 mr-2" />
-                    Asignar Primer Cliente
+                    Crear Primer Cliente
                   </Button>
                 </DialogTrigger>
               </Dialog>
