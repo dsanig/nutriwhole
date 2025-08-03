@@ -19,8 +19,18 @@ interface Client {
   assigned_at: string;
 }
 
+interface AssignmentRequest {
+  id: string;
+  client_id: string;
+  client_email: string;
+  client_name: string;
+  message: string | null;
+  created_at: string;
+}
+
 const CoachPanel = () => {
   const [clients, setClients] = useState<Client[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<AssignmentRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newClientEmail, setNewClientEmail] = useState('');
@@ -92,6 +102,33 @@ const CoachPanel = () => {
       }).filter(Boolean);
 
       setClients(clientsData);
+
+      // Get pending assignment requests
+      const { data: requestsData, error: requestsError } = await supabase
+        .from('coach_assignment_requests')
+        .select(`
+          id,
+          client_id,
+          message,
+          created_at,
+          client:profiles!coach_assignment_requests_client_id_fkey(email, full_name)
+        `)
+        .eq('coach_id', coachProfile.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (requestsError) throw requestsError;
+
+      const formattedRequests = requestsData.map(request => ({
+        id: request.id,
+        client_id: request.client_id,
+        client_email: request.client.email,
+        client_name: request.client.full_name,
+        message: request.message,
+        created_at: request.created_at
+      }));
+
+      setPendingRequests(formattedRequests);
 
     } catch (error) {
       console.error('Error fetching coach clients:', error);
@@ -192,6 +229,60 @@ const CoachPanel = () => {
     }
   };
 
+  const handleAssignmentRequest = async (requestId: string, action: 'accept' | 'reject') => {
+    try {
+      // Update request status
+      const { error: updateError } = await supabase
+        .from('coach_assignment_requests')
+        .update({ status: action === 'accept' ? 'accepted' : 'rejected' })
+        .eq('id', requestId);
+
+      if (updateError) throw updateError;
+
+      if (action === 'accept') {
+        // Get request details to create assignment
+        const request = pendingRequests.find(r => r.id === requestId);
+        if (!request) throw new Error('Request not found');
+
+        // Get current coach profile
+        const { data: coachProfile, error: coachError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+          .single();
+
+        if (coachError) throw coachError;
+
+        // Create the assignment
+        const { error: assignError } = await supabase
+          .from('clients_coaches')
+          .insert({
+            coach_id: coachProfile.id,
+            client_id: request.client_id
+          });
+
+        if (assignError) throw assignError;
+      }
+
+      toast({
+        title: action === 'accept' ? "Solicitud aceptada" : "Solicitud rechazada",
+        description: action === 'accept' 
+          ? "El cliente ha sido asignado exitosamente"
+          : "La solicitud ha sido rechazada"
+      });
+
+      fetchCoachClients();
+
+    } catch (error) {
+      console.error('Error handling assignment request:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo procesar la solicitud"
+      });
+    }
+  };
+
   const removeClient = async (clientId: string) => {
     try {
       // Get current coach profile
@@ -238,6 +329,55 @@ const CoachPanel = () => {
 
   return (
     <div className="space-y-6">
+      {pendingRequests.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Solicitudes Pendientes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {pendingRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
+                  <div className="flex-1">
+                    <p className="font-medium">{request.client_name || request.client_email}</p>
+                    <p className="text-sm text-muted-foreground">{request.client_email}</p>
+                    {request.message && (
+                      <p className="text-sm text-muted-foreground mt-2 italic">
+                        "{request.message}"
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(request.created_at).toLocaleDateString('es-ES')}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleAssignmentRequest(request.id, 'reject')}
+                    >
+                      Rechazar
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleAssignmentRequest(request.id, 'accept')}
+                    >
+                      Aceptar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
