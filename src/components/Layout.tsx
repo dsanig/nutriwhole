@@ -9,6 +9,7 @@ import TodayView from '@/components/TodayView';
 import CalendarView from '@/components/CalendarView';
 import AdminPanel from '@/components/AdminPanel';
 import CoachPanel from '@/components/CoachPanel';
+import ClientPanel from '@/components/ClientPanel';
 
 const Layout = () => {
   const { user, profile, signOut, loading } = useAuth();
@@ -76,19 +77,24 @@ const Layout = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="today" className="w-full">
+        <Tabs defaultValue={profile.role === 'client' ? 'client' : 'today'} className="w-full">
           <TabsList className={`grid w-full mb-6 ${
             profile.role === 'admin' ? 'grid-cols-3' : 
-            profile.role === 'coach' ? 'grid-cols-3' : 'grid-cols-2'
+            profile.role === 'coach' ? 'grid-cols-3' : 
+            profile.role === 'client' ? 'grid-cols-3' : 'grid-cols-2'
           }`}>
-            <TabsTrigger value="today" className="flex items-center gap-2">
-              <Home className="w-4 h-4" />
-              Hoy
-            </TabsTrigger>
-            <TabsTrigger value="calendar" className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Calendario
-            </TabsTrigger>
+            {profile.role !== 'client' && (
+              <TabsTrigger value="today" className="flex items-center gap-2">
+                <Home className="w-4 h-4" />
+                Hoy
+              </TabsTrigger>
+            )}
+            {profile.role !== 'client' && (
+              <TabsTrigger value="calendar" className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Calendario
+              </TabsTrigger>
+            )}
             {profile.role === 'admin' && (
               <TabsTrigger value="admin" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
@@ -100,6 +106,22 @@ const Layout = () => {
                 <Settings className="w-4 h-4" />
                 Mis Clientes
               </TabsTrigger>
+            )}
+            {profile.role === 'client' && (
+              <>
+                <TabsTrigger value="client" className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Mi Coach
+                </TabsTrigger>
+                <TabsTrigger value="today" className="flex items-center gap-2">
+                  <Home className="w-4 h-4" />
+                  Hoy
+                </TabsTrigger>
+                <TabsTrigger value="calendar" className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Calendario
+                </TabsTrigger>
+              </>
             )}
           </TabsList>
 
@@ -120,6 +142,12 @@ const Layout = () => {
           {profile.role === 'coach' && (
             <TabsContent value="coach">
               <CoachPanel />
+            </TabsContent>
+          )}
+
+          {profile.role === 'client' && (
+            <TabsContent value="client">
+              <ClientPanel />
             </TabsContent>
           )}
         </Tabs>
