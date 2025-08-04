@@ -329,15 +329,21 @@ const CoachPanel = () => {
 
   return (
     <div className="space-y-6">
-      {pendingRequests.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Solicitudes Pendientes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      {/* Always show pending requests section, even if empty, for better UX */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            Solicitudes Pendientes 
+            {pendingRequests.length > 0 && (
+              <Badge variant="destructive" className="ml-2">
+                {pendingRequests.length}
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {pendingRequests.length > 0 ? (
             <div className="space-y-4">
               {pendingRequests.map((request) => (
                 <div
@@ -374,9 +380,14 @@ const CoachPanel = () => {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="text-center py-6">
+              <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">No hay solicitudes pendientes</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
