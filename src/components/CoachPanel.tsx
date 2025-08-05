@@ -104,6 +104,7 @@ const CoachPanel = () => {
       setClients(clientsData);
 
       // Get pending assignment requests
+      console.log('Fetching requests for coach:', coachProfile.id);
       const { data: requestsData, error: requestsError } = await supabase
         .from('coach_assignment_requests')
         .select(`
@@ -117,6 +118,9 @@ const CoachPanel = () => {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
+      console.log('Requests data:', requestsData);
+      console.log('Requests error:', requestsError);
+
       if (requestsError) throw requestsError;
 
       const formattedRequests = requestsData.map(request => ({
@@ -127,6 +131,8 @@ const CoachPanel = () => {
         message: request.message,
         created_at: request.created_at
       }));
+
+      console.log('Formatted requests:', formattedRequests);
 
       setPendingRequests(formattedRequests);
 
