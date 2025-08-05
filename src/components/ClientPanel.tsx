@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Users, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Users, Clock, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -208,6 +208,31 @@ const ClientPanel = () => {
     }
   };
 
+  const deleteRequest = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('coach_assignment_requests')
+        .delete()
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Solicitud eliminada",
+        description: "La solicitud ha sido eliminada correctamente"
+      });
+
+      fetchClientData();
+    } catch (error) {
+      console.error('Error deleting request:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar la solicitud"
+      });
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
@@ -350,6 +375,7 @@ const ClientPanel = () => {
                   <TableHead>Email</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Fecha</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -368,6 +394,18 @@ const ClientPanel = () => {
                     </TableCell>
                     <TableCell>
                       {new Date(request.created_at).toLocaleDateString('es-ES')}
+                    </TableCell>
+                    <TableCell>
+                      {request.status === 'pending' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteRequest(request.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
