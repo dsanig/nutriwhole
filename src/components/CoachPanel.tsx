@@ -69,41 +69,40 @@ const CoachPanel = () => {
       if (!assignmentData || assignmentData.length === 0) {
         console.log('No assignments found for coach');
         setClients([]);
-        setLoading(false);
-        return;
+        // Don't return here - we still need to fetch pending requests
+      } else {
+        // Get client profiles separately
+        const clientIds = assignmentData.map(assignment => assignment.client_id);
+        console.log('Client IDs:', clientIds);
+        
+        const { data: clientProfiles, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, user_id, email, full_name')
+          .in('id', clientIds);
+
+        console.log('Client profiles:', clientProfiles);
+        if (profileError) throw profileError;
+
+        // Combine assignment data with profiles
+        const clientsData = assignmentData.map(assignment => {
+          const profile = clientProfiles?.find(p => p.id === assignment.client_id);
+          if (!profile) {
+            console.warn('Profile not found for client_id:', assignment.client_id);
+            return null;
+          }
+          return {
+            id: profile.id,
+            user_id: profile.user_id,
+            email: profile.email,
+            full_name: profile.full_name,
+            assigned_at: assignment.assigned_at
+          };
+        }).filter(Boolean);
+
+        setClients(clientsData);
       }
 
-      // Get client profiles separately
-      const clientIds = assignmentData.map(assignment => assignment.client_id);
-      console.log('Client IDs:', clientIds);
-      
-      const { data: clientProfiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, user_id, email, full_name')
-        .in('id', clientIds);
-
-      console.log('Client profiles:', clientProfiles);
-      if (profileError) throw profileError;
-
-      // Combine assignment data with profiles
-      const clientsData = assignmentData.map(assignment => {
-        const profile = clientProfiles?.find(p => p.id === assignment.client_id);
-        if (!profile) {
-          console.warn('Profile not found for client_id:', assignment.client_id);
-          return null;
-        }
-        return {
-          id: profile.id,
-          user_id: profile.user_id,
-          email: profile.email,
-          full_name: profile.full_name,
-          assigned_at: assignment.assigned_at
-        };
-      }).filter(Boolean);
-
-      setClients(clientsData);
-
-      // Get pending assignment requests
+      // Get pending assignment requests (moved outside the if/else)
       console.log('Fetching requests for coach:', coachProfile.id);
       const { data: requestsData, error: requestsError } = await supabase
         .from('coach_assignment_requests')
