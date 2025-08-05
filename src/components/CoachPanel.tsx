@@ -111,7 +111,7 @@ const CoachPanel = () => {
           client_id,
           message,
           created_at,
-          client:profiles!coach_assignment_requests_client_id_fkey(email, full_name)
+          client:profiles!client_id(email, full_name)
         `)
         .eq('coach_id', coachProfile.id)
         .eq('status', 'pending')
