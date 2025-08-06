@@ -106,13 +106,7 @@ const CoachPanel = () => {
       console.log('Fetching requests for coach:', coachProfile.id);
       const { data: requestsData, error: requestsError } = await supabase
         .from('coach_assignment_requests')
-        .select(`
-          id,
-          client_id,
-          message,
-          created_at,
-          client:profiles!coach_assignment_requests_client_id_fkey(email, full_name)
-        `)
+        .select('id, client_id, message, created_at')
         .eq('coach_id', coachProfile.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
@@ -122,14 +116,30 @@ const CoachPanel = () => {
 
       if (requestsError) throw requestsError;
 
-      const formattedRequests = requestsData.map(request => ({
-        id: request.id,
-        client_id: request.client_id,
-        client_email: request.client.email,
-        client_name: request.client.full_name,
-        message: request.message,
-        created_at: request.created_at
-      }));
+      // Get client profiles separately for the requests
+      const requestClientIds = requestsData?.map(request => request.client_id) || [];
+      let formattedRequests = [];
+
+      if (requestClientIds.length > 0) {
+        const { data: requestClientProfiles, error: requestProfileError } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .in('id', requestClientIds);
+
+        if (requestProfileError) throw requestProfileError;
+
+        formattedRequests = requestsData.map(request => {
+          const clientProfile = requestClientProfiles?.find(p => p.id === request.client_id);
+          return {
+            id: request.id,
+            client_id: request.client_id,
+            client_email: clientProfile?.email || 'Unknown',
+            client_name: clientProfile?.full_name || 'Unknown',
+            message: request.message,
+            created_at: request.created_at
+          };
+        });
+      }
 
       console.log('Formatted requests:', formattedRequests);
 
