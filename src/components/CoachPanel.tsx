@@ -119,6 +119,7 @@ const CoachPanel = () => {
       // Get client profiles separately for the requests
       const requestClientIds = requestsData?.map(request => request.client_id) || [];
       console.log('Request client IDs:', requestClientIds);
+      console.log('Raw requests data:', requestsData);
       let formattedRequests = [];
 
       if (requestClientIds.length > 0) {
