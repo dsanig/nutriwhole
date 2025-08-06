@@ -366,8 +366,12 @@ const CoachPanel = () => {
                   className="flex items-center justify-between p-4 border rounded-lg"
                 >
                   <div className="flex-1">
-                    <p className="font-medium">{request.client_name || request.client_email}</p>
-                    <p className="text-sm text-muted-foreground">{request.client_email}</p>
+                    <p className="font-medium">
+                      {request.client_name !== 'Unknown' ? request.client_name : request.client_email}
+                    </p>
+                    {request.client_name !== 'Unknown' && (
+                      <p className="text-sm text-muted-foreground">{request.client_email}</p>
+                    )}
                     {request.message && (
                       <p className="text-sm text-muted-foreground mt-2 italic">
                         "{request.message}"
