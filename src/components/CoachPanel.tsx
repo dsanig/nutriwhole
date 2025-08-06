@@ -118,6 +118,7 @@ const CoachPanel = () => {
 
       // Get client profiles separately for the requests
       const requestClientIds = requestsData?.map(request => request.client_id) || [];
+      console.log('Request client IDs:', requestClientIds);
       let formattedRequests = [];
 
       if (requestClientIds.length > 0) {
@@ -126,15 +127,20 @@ const CoachPanel = () => {
           .select('id, email, full_name')
           .in('id', requestClientIds);
 
-        if (requestProfileError) throw requestProfileError;
+        console.log('Request client profiles:', requestClientProfiles);
+        if (requestProfileError) {
+          console.error('Request profile error:', requestProfileError);
+          throw requestProfileError;
+        }
 
         formattedRequests = requestsData.map(request => {
           const clientProfile = requestClientProfiles?.find(p => p.id === request.client_id);
+          console.log(`Looking for client_id ${request.client_id}, found:`, clientProfile);
           return {
             id: request.id,
             client_id: request.client_id,
-            client_email: clientProfile?.email || 'Unknown',
-            client_name: clientProfile?.full_name || 'Unknown',
+            client_email: clientProfile?.email || 'No email found',
+            client_name: clientProfile?.full_name || clientProfile?.email || 'Unknown',
             message: request.message,
             created_at: request.created_at
           };
