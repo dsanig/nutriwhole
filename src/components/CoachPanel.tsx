@@ -255,15 +255,6 @@ const CoachPanel = () => {
     try {
       console.log('Handling assignment request:', requestId, action);
       
-      // Update request status
-      const { error: updateError } = await supabase
-        .from('coach_assignment_requests')
-        .update({ status: action === 'accept' ? 'accepted' : 'rejected' })
-        .eq('id', requestId);
-
-      console.log('Update request result:', { updateError });
-      if (updateError) throw updateError;
-
       if (action === 'accept') {
         // Get request details to create assignment
         const request = pendingRequests.find(r => r.id === requestId);
@@ -280,7 +271,7 @@ const CoachPanel = () => {
         console.log('Coach profile result:', { coachProfile, coachError });
         if (coachError) throw coachError;
 
-        // Create the assignment
+        // Create the assignment first
         console.log('Creating assignment:', { coach_id: coachProfile.id, client_id: request.client_id });
         const { error: assignError } = await supabase
           .from('clients_coaches')
@@ -292,6 +283,15 @@ const CoachPanel = () => {
         console.log('Assignment result:', { assignError });
         if (assignError) throw assignError;
       }
+
+      // Delete the request instead of updating to avoid constraint issues
+      const { error: deleteError } = await supabase
+        .from('coach_assignment_requests')
+        .delete()
+        .eq('id', requestId);
+
+      console.log('Delete request result:', { deleteError });
+      if (deleteError) throw deleteError;
 
       toast({
         title: action === 'accept' ? "Solicitud aceptada" : "Solicitud rechazada",
