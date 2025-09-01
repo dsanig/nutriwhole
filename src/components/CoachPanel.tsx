@@ -253,17 +253,21 @@ const CoachPanel = () => {
 
   const handleAssignmentRequest = async (requestId: string, action: 'accept' | 'reject') => {
     try {
+      console.log('Handling assignment request:', requestId, action);
+      
       // Update request status
       const { error: updateError } = await supabase
         .from('coach_assignment_requests')
         .update({ status: action === 'accept' ? 'accepted' : 'rejected' })
         .eq('id', requestId);
 
+      console.log('Update request result:', { updateError });
       if (updateError) throw updateError;
 
       if (action === 'accept') {
         // Get request details to create assignment
         const request = pendingRequests.find(r => r.id === requestId);
+        console.log('Found request:', request);
         if (!request) throw new Error('Request not found');
 
         // Get current coach profile
@@ -273,9 +277,11 @@ const CoachPanel = () => {
           .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
           .single();
 
+        console.log('Coach profile result:', { coachProfile, coachError });
         if (coachError) throw coachError;
 
         // Create the assignment
+        console.log('Creating assignment:', { coach_id: coachProfile.id, client_id: request.client_id });
         const { error: assignError } = await supabase
           .from('clients_coaches')
           .insert({
@@ -283,6 +289,7 @@ const CoachPanel = () => {
             client_id: request.client_id
           });
 
+        console.log('Assignment result:', { assignError });
         if (assignError) throw assignError;
       }
 
