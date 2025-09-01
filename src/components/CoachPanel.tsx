@@ -300,7 +300,9 @@ const CoachPanel = () => {
           : "La solicitud ha sido rechazada"
       });
 
-      fetchCoachClients();
+      console.log('About to refresh coach clients...');
+      await fetchCoachClients();
+      console.log('Coach clients refreshed');
 
     } catch (error) {
       console.error('Error handling assignment request:', error);
