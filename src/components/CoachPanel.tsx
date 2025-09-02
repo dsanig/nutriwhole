@@ -298,24 +298,15 @@ const CoachPanel = () => {
         }
       }
 
-      // Delete the request instead of updating to avoid constraint issues
-      console.log('About to delete request with ID:', requestId);
-      const { error: deleteError } = await supabase
+      // Update the request status instead of deleting (coaches can't delete requests)
+      console.log('About to update request status with ID:', requestId, 'to:', action === 'accept' ? 'accepted' : 'rejected');
+      const { error: updateError } = await supabase
         .from('coach_assignment_requests')
-        .delete()
+        .update({ status: action === 'accept' ? 'accepted' : 'rejected' })
         .eq('id', requestId);
 
-      console.log('Delete request result:', { deleteError });
-      if (deleteError) throw deleteError;
-
-      // Verify deletion by checking if request still exists
-      const { data: deletedCheck } = await supabase
-        .from('coach_assignment_requests')
-        .select('id')
-        .eq('id', requestId)
-        .maybeSingle();
-      
-      console.log('Verification - request still exists after delete:', deletedCheck);
+      console.log('Update request result:', { updateError });
+      if (updateError) throw updateError;
 
       // Update local state immediately to avoid showing the deleted request
       setPendingRequests(prev => prev.filter(req => req.id !== requestId));
