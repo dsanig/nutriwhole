@@ -277,7 +277,7 @@ const CoachPanel = () => {
           .select('id')
           .eq('coach_id', coachProfile.id)
           .eq('client_id', request.client_id)
-          .single();
+          .maybeSingle();
 
         console.log('Existing assignment check:', { existingAssignment, checkError });
 
