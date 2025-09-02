@@ -255,6 +255,7 @@ const CoachPanel = () => {
   const handleAssignmentRequest = async (requestId: string, action: 'accept' | 'reject') => {
     try {
       console.log('Handling assignment request:', requestId, action);
+      let wasAlreadyAccepted = false;
       
       if (action === 'accept') {
         // Get request details to create assignment
@@ -297,25 +298,57 @@ const CoachPanel = () => {
         } else {
           console.log('Assignment already exists, skipping creation');
         }
+
+        // Conflict-safe status update for this request
+        // Check if an accepted request already exists for this client/coach
+        const { data: existingAccepted, error: acceptedCheckError } = await supabase
+          .from('coach_assignment_requests')
+          .select('id')
+          .eq('client_id', request.client_id)
+          .eq('coach_id', coachProfile.id)
+          .eq('status', 'accepted')
+          .maybeSingle();
+
+        console.log('Existing accepted request:', { existingAccepted, acceptedCheckError });
+
+        if (existingAccepted && existingAccepted.id !== requestId) {
+          wasAlreadyAccepted = true;
+          console.log('Another accepted request exists, marking this one as rejected to close it');
+          const { error: closeError } = await supabase
+            .from('coach_assignment_requests')
+            .update({ status: 'rejected' })
+            .eq('id', requestId);
+          console.log('Close request result:', { closeError });
+          if (closeError) throw closeError;
+        } else {
+          console.log('No existing accepted found, accepting this request');
+          const { error: acceptError } = await supabase
+            .from('coach_assignment_requests')
+            .update({ status: 'accepted' })
+            .eq('id', requestId);
+          console.log('Accept request result:', { acceptError });
+          if (acceptError) throw acceptError;
+        }
       }
 
-      // Update the request status instead of deleting (coaches can't delete requests)
-      console.log('About to update request status with ID:', requestId, 'to:', action === 'accept' ? 'accepted' : 'rejected');
-      const { error: updateError } = await supabase
-        .from('coach_assignment_requests')
-        .update({ status: action === 'accept' ? 'accepted' : 'rejected' })
-        .eq('id', requestId);
-
-      console.log('Update request result:', { updateError });
-      if (updateError) throw updateError;
+      // For rejections, just mark as rejected
+      if (action === 'reject') {
+        console.log('Rejecting request:', requestId);
+        const { error: rejectError } = await supabase
+          .from('coach_assignment_requests')
+          .update({ status: 'rejected' })
+          .eq('id', requestId);
+        console.log('Reject request result:', { rejectError });
+        if (rejectError) throw rejectError;
+      }
 
       // Update local state immediately to avoid showing the deleted request
       setPendingRequests(prev => prev.filter(req => req.id !== requestId));
 
       toast({
-        title: action === 'accept' ? "Solicitud aceptada" : "Solicitud rechazada",
+        title: action === 'accept' ? (wasAlreadyAccepted ? "Solicitud procesada" : "Solicitud aceptada") : "Solicitud rechazada",
         description: action === 'accept' 
-          ? "El cliente ha sido asignado exitosamente"
+          ? (wasAlreadyAccepted ? "Ya existía una solicitud aceptada. Esta fue cerrada." : "El cliente ha sido asignado exitosamente")
           : "La solicitud ha sido rechazada"
       });
 
