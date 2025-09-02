@@ -271,17 +271,31 @@ const CoachPanel = () => {
         console.log('Coach profile result:', { coachProfile, coachError });
         if (coachError) throw coachError;
 
-        // Create the assignment first
-        console.log('Creating assignment:', { coach_id: coachProfile.id, client_id: request.client_id });
-        const { error: assignError } = await supabase
+        // Check if assignment already exists
+        const { data: existingAssignment, error: checkError } = await supabase
           .from('clients_coaches')
-          .insert({
-            coach_id: coachProfile.id,
-            client_id: request.client_id
-          });
+          .select('id')
+          .eq('coach_id', coachProfile.id)
+          .eq('client_id', request.client_id)
+          .single();
 
-        console.log('Assignment result:', { assignError });
-        if (assignError) throw assignError;
+        console.log('Existing assignment check:', { existingAssignment, checkError });
+
+        // Only create assignment if it doesn't exist
+        if (!existingAssignment) {
+          console.log('Creating assignment:', { coach_id: coachProfile.id, client_id: request.client_id });
+          const { error: assignError } = await supabase
+            .from('clients_coaches')
+            .insert({
+              coach_id: coachProfile.id,
+              client_id: request.client_id
+            });
+
+          console.log('Assignment result:', { assignError });
+          if (assignError) throw assignError;
+        } else {
+          console.log('Assignment already exists, skipping creation');
+        }
       }
 
       // Delete the request instead of updating to avoid constraint issues
