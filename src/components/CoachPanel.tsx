@@ -137,6 +137,7 @@ const CoachPanel = () => {
         formattedRequests = requestsData.map(request => {
           const clientProfile = requestClientProfiles?.find(p => p.id === request.client_id);
           console.log(`Looking for client_id ${request.client_id}, found:`, clientProfile);
+          console.log(`Client profile email:`, clientProfile?.email);
           return {
             id: request.id,
             client_id: request.client_id,
