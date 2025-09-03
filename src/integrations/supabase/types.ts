@@ -319,6 +319,14 @@ export type Database = {
         Args: { _client_profile_id: string }
         Returns: boolean
       }
+      can_coach_view_client_profile_pending: {
+        Args: { _client_profile_id: string }
+        Returns: boolean
+      }
+      get_current_profile_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
