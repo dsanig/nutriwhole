@@ -313,13 +313,13 @@ const CoachPanel = () => {
 
         if (existingAccepted && existingAccepted.id !== requestId) {
           wasAlreadyAccepted = true;
-          console.log('Another accepted request exists, marking this one as rejected to close it');
-          const { error: closeError } = await supabase
+          console.log('Another accepted request exists, deleting this duplicate request');
+          const { error: deleteError } = await supabase
             .from('coach_assignment_requests')
-            .update({ status: 'rejected' })
+            .delete()
             .eq('id', requestId);
-          console.log('Close request result:', { closeError });
-          if (closeError) throw closeError;
+          console.log('Delete duplicate request result:', { deleteError });
+          if (deleteError) throw deleteError;
         } else {
           console.log('No existing accepted found, accepting this request');
           const { error: acceptError } = await supabase
