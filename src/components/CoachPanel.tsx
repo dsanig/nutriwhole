@@ -342,9 +342,6 @@ const CoachPanel = () => {
         if (rejectError) throw rejectError;
       }
 
-      // Update local state immediately to avoid showing the deleted request
-      setPendingRequests(prev => prev.filter(req => req.id !== requestId));
-
       toast({
         title: action === 'accept' ? (wasAlreadyAccepted ? "Solicitud procesada" : "Solicitud aceptada") : "Solicitud rechazada",
         description: action === 'accept' 
@@ -352,9 +349,8 @@ const CoachPanel = () => {
           : "La solicitud ha sido rechazada"
       });
 
-      console.log('About to refresh coach clients...');
+      // Refresh data and update local state
       await fetchCoachClients();
-      console.log('Coach clients refreshed - current requests count:', pendingRequests.length);
 
     } catch (error) {
       console.error('Error handling assignment request:', error);
