@@ -331,6 +331,9 @@ const CoachPanel = () => {
             .eq('id', requestId);
           console.log('Accept request result:', { acceptError });
           if (acceptError) throw acceptError;
+          
+          // Immediately update local state to remove the accepted request
+          setPendingRequests(prev => prev.filter(req => req.id !== requestId));
         }
       }
 
