@@ -331,13 +331,29 @@ const CoachPanel = () => {
         }
       }
 
-      // For rejections, just mark as rejected
+      // For rejections, check if request still exists and is pending
       if (action === 'reject') {
         console.log('Rejecting request:', requestId);
+        
+        // First check if the request still exists and is pending
+        const { data: existingRequest, error: checkError } = await supabase
+          .from('coach_assignment_requests')
+          .select('status')
+          .eq('id', requestId)
+          .single();
+          
+        if (checkError) throw checkError;
+        
+        if (existingRequest.status !== 'pending') {
+          throw new Error('Esta solicitud ya ha sido procesada');
+        }
+        
         const { error: rejectError } = await supabase
           .from('coach_assignment_requests')
           .update({ status: 'rejected' })
-          .eq('id', requestId);
+          .eq('id', requestId)
+          .eq('status', 'pending'); // Only update if still pending
+          
         console.log('Reject request result:', { rejectError });
         if (rejectError) throw rejectError;
       }
@@ -349,7 +365,7 @@ const CoachPanel = () => {
           : "La solicitud ha sido rechazada"
       });
 
-      // Refresh data and update local state
+      // Refresh data
       await fetchCoachClients();
 
     } catch (error) {
