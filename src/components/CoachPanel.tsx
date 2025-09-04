@@ -320,6 +320,9 @@ const CoachPanel = () => {
             .eq('id', requestId);
           console.log('Delete duplicate request result:', { deleteError });
           if (deleteError) throw deleteError;
+          
+          // Immediately update local state to remove the deleted request
+          setPendingRequests(prev => prev.filter(req => req.id !== requestId));
         } else {
           console.log('No existing accepted found, accepting this request');
           const { error: acceptError } = await supabase
