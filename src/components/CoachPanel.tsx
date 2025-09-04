@@ -340,12 +340,21 @@ const CoachPanel = () => {
           .from('coach_assignment_requests')
           .select('status')
           .eq('id', requestId)
-          .single();
+          .maybeSingle();
           
         if (checkError) throw checkError;
         
+        // If request doesn't exist anymore, just refresh and return
+        if (!existingRequest) {
+          console.log('Request no longer exists, just refreshing data');
+          await fetchCoachClients();
+          return;
+        }
+        
         if (existingRequest.status !== 'pending') {
-          throw new Error('Esta solicitud ya ha sido procesada');
+          console.log('Request is no longer pending, just refreshing data');
+          await fetchCoachClients();
+          return;
         }
         
         const { error: rejectError } = await supabase
