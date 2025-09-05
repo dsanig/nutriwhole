@@ -380,10 +380,11 @@ const CoachPanel = () => {
           : "La solicitud ha sido rechazada"
       });
 
-      // Refresh data only for rejections or if we need to update assignments
-      if (action === 'reject' || (action === 'accept' && !wasAlreadyAccepted)) {
-        await fetchCoachClients();
-      }
+      // Always remove the processed request from the pending list
+      setPendingRequests(prev => prev.filter(req => req.id !== requestId));
+
+      // Refresh data to get updated assignments
+      await fetchCoachClients();
 
     } catch (error) {
       console.error('Error handling assignment request:', error);
