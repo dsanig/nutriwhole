@@ -53,7 +53,7 @@ const Layout = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">NutritiWhole</h1>
+              <h1 className="text-2xl font-bold">NutriWhole</h1>
               <p className="text-sm text-muted-foreground">
                 Gestión de planes nutricionales
               </p>

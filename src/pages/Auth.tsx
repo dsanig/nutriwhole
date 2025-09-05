@@ -125,12 +125,6 @@ const Auth = () => {
                   {isLoading ? 'Iniciando...' : 'Iniciar Sesión'}
                 </Button>
               </form>
-              
-              <div className="text-sm text-muted-foreground border-t pt-4">
-                <p className="font-medium">Cuenta de administrador por defecto:</p>
-                <p>Email: admin@admin.com</p>
-                <p>Contraseña: admin</p>
-              </div>
             </TabsContent>
             
             <TabsContent value="signup" className="space-y-4">
