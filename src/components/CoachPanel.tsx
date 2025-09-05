@@ -299,42 +299,15 @@ const CoachPanel = () => {
           console.log('Assignment already exists, skipping creation');
         }
 
-        // Conflict-safe status update for this request
-        // Check if an accepted request already exists for this client/coach
-        const { data: existingAccepted, error: acceptedCheckError } = await supabase
+        // Update the request status to accepted
+        const { error: acceptError } = await supabase
           .from('coach_assignment_requests')
-          .select('id')
-          .eq('client_id', request.client_id)
-          .eq('coach_id', coachProfile.id)
-          .eq('status', 'accepted')
-          .maybeSingle();
-
-        console.log('Existing accepted request:', { existingAccepted, acceptedCheckError });
-
-        if (existingAccepted && existingAccepted.id !== requestId) {
-          wasAlreadyAccepted = true;
-          console.log('Another accepted request exists, deleting this duplicate request');
-          const { error: deleteError } = await supabase
-            .from('coach_assignment_requests')
-            .delete()
-            .eq('id', requestId);
-          console.log('Delete duplicate request result:', { deleteError });
-          if (deleteError) throw deleteError;
+          .update({ status: 'accepted' })
+          .eq('id', requestId)
+          .eq('status', 'pending');
           
-          // Immediately update local state to remove the deleted request
-          setPendingRequests(prev => prev.filter(req => req.id !== requestId));
-        } else {
-          console.log('No existing accepted found, accepting this request');
-          const { error: acceptError } = await supabase
-            .from('coach_assignment_requests')
-            .update({ status: 'accepted' })
-            .eq('id', requestId);
-          console.log('Accept request result:', { acceptError });
-          if (acceptError) throw acceptError;
-          
-          // Immediately update local state to remove the accepted request
-          setPendingRequests(prev => prev.filter(req => req.id !== requestId));
-        }
+        console.log('Accept request result:', { acceptError });
+        if (acceptError) throw acceptError;
       }
 
       // For rejections, check if request still exists and is pending
