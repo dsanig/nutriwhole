@@ -5,14 +5,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Home, Settings, LogOut, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
 import TodayView from '@/components/TodayView';
 import CalendarView from '@/components/CalendarView';
 import AdminPanel from '@/components/AdminPanel';
 import CoachPanel from '@/components/CoachPanel';
 import ClientPanel from '@/components/ClientPanel';
+import { SubscriptionRequired } from '@/components/SubscriptionRequired';
+import { SubscriptionStatus } from '@/components/SubscriptionStatus';
 
 const Layout = () => {
   const { user, profile, signOut, loading } = useAuth();
+  const { subscriptionStatus, isLoading: subscriptionLoading, checkSubscription } = useSubscription();
   const { toast } = useToast();
 
   if (loading) {
@@ -32,6 +36,16 @@ const Layout = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg">Cargando perfil...</div>
       </div>
+    );
+  }
+
+  // Check subscription for clients
+  if (profile.role === 'client' && !subscriptionStatus.subscribed) {
+    return (
+      <SubscriptionRequired
+        onRetryCheck={checkSubscription}
+        isChecking={subscriptionLoading}
+      />
     );
   }
 
@@ -77,6 +91,11 @@ const Layout = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
+        {/* Show subscription status for clients */}
+        {profile.role === 'client' && subscriptionStatus.subscribed && (
+          <SubscriptionStatus />
+        )}
+        
         <Tabs defaultValue={profile.role === 'client' ? 'client' : 'today'} className="w-full">
           <TabsList className={`grid w-full mb-6 ${
             profile.role === 'admin' ? 'grid-cols-3' : 
