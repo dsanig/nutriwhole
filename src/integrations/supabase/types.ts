@@ -287,6 +287,7 @@ export type Database = {
           full_name: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          subscription_exempt: boolean
           updated_at: string | null
           user_id: string
         }
@@ -296,6 +297,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          subscription_exempt?: boolean
           updated_at?: string | null
           user_id: string
         }
@@ -305,6 +307,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          subscription_exempt?: boolean
           updated_at?: string | null
           user_id?: string
         }

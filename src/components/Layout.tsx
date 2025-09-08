@@ -39,8 +39,8 @@ const Layout = () => {
     );
   }
 
-  // Check subscription for clients
-  if (profile.role === 'client' && !subscriptionStatus.subscribed) {
+  // Check subscription for clients (allow exempt accounts)
+  if (profile.role === 'client' && !profile.subscription_exempt && !subscriptionStatus.subscribed) {
     return (
       <SubscriptionRequired
         onRetryCheck={checkSubscription}

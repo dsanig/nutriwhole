@@ -8,6 +8,7 @@ export interface Profile {
   email: string;
   full_name: string | null;
   role: 'admin' | 'coach' | 'client';
+  subscription_exempt: boolean; // Allows access without active subscription
 }
 
 export const useAuth = () => {
