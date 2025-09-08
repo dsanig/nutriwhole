@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Users, UserPlus, Settings } from 'lucide-react';
+import { Users, UserPlus, Settings, Shield, ShieldOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 interface Profile {
   id: string;
@@ -19,6 +20,7 @@ interface Profile {
   full_name: string | null;
   role: 'admin' | 'coach' | 'client';
   created_at: string;
+  subscription_exempt: boolean;
 }
 
 interface ClientCoachAssignment {
@@ -74,7 +76,8 @@ const AdminPanel = () => {
             email,
             full_name,
             role,
-            created_at
+            created_at,
+            subscription_exempt
           ),
           coach:profiles!coach_id (
             id,
@@ -82,7 +85,8 @@ const AdminPanel = () => {
             email,
             full_name,
             role,
-            created_at
+            created_at,
+            subscription_exempt
           )
         `);
 
@@ -246,6 +250,32 @@ const AdminPanel = () => {
     }
   };
 
+  const toggleSubscriptionExemption = async (profileId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ subscription_exempt: !currentStatus })
+        .eq('id', profileId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Exención actualizada",
+        description: `Exención de suscripción ${!currentStatus ? 'activada' : 'desactivada'}`
+      });
+
+      fetchData();
+
+    } catch (error: any) {
+      console.error('Error updating exemption:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
+    }
+  };
+
   const clients = profiles.filter(p => p.role === 'client');
   const coaches = profiles.filter(p => p.role === 'coach');
 
@@ -269,9 +299,10 @@ const AdminPanel = () => {
       </Card>
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="users">Gestión de Usuarios</TabsTrigger>
           <TabsTrigger value="assignments">Asignaciones Coach-Cliente</TabsTrigger>
+          <TabsTrigger value="exemptions">Exenciones de Suscripción</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-4">
@@ -476,6 +507,77 @@ const AdminPanel = () => {
                         >
                           Eliminar
                         </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="exemptions" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Gestión de Exenciones de Suscripción
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Los usuarios exentos pueden acceder a la aplicación sin suscripción activa
+              </p>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Usuario</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Rol</TableHead>
+                    <TableHead>Estado de Exención</TableHead>
+                    <TableHead>Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {profiles.map((profile) => (
+                    <TableRow key={profile.id}>
+                      <TableCell>{profile.full_name || '-'}</TableCell>
+                      <TableCell>{profile.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          profile.role === 'admin' ? 'destructive' :
+                          profile.role === 'coach' ? 'default' : 'secondary'
+                        }>
+                          {profile.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {profile.subscription_exempt ? (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <Shield className="w-4 h-4" />
+                              <span className="text-sm">Exento</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-gray-500">
+                              <ShieldOff className="w-4 h-4" />
+                              <span className="text-sm">No exento</span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={profile.subscription_exempt}
+                            onCheckedChange={() => 
+                              toggleSubscriptionExemption(profile.id, profile.subscription_exempt)
+                            }
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            {profile.subscription_exempt ? 'Quitar exención' : 'Otorgar exención'}
+                          </span>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
