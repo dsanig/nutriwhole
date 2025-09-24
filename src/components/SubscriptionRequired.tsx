@@ -10,7 +10,7 @@ interface SubscriptionRequiredProps {
 export const SubscriptionRequired = ({ onRetryCheck, isChecking }: SubscriptionRequiredProps) => {
   const handleVisitShop = () => {
     // TODO: Replace with your actual Odoo shop URL
-    const shopUrl = 'https://your-odoo-shop.com'; // Change this to your Odoo shop URL
+    const shopUrl = 'https://buy.stripe.com/3cIaEXa0j9s0gcr3DL24000'; // Change this to your Odoo shop URL
     window.open(shopUrl, '_blank');
   };
 
