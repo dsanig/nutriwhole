@@ -34,17 +34,12 @@ interface ParsedMealData {
 }
 
 const ExcelUpload = ({ profile, onUploadComplete }: ExcelUploadProps) => {
-  const isCoach = profile.role === 'coach';
   const [startDate, setStartDate] = useState<Date>();
   const [file, setFile] = useState<File | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-
-  if (!isCoach) {
-    return null;
-  }
 
   const parseExcelFile = (file: File): Promise<ParsedMealData[]> => {
     return new Promise((resolve, reject) => {
