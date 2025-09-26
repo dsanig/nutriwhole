@@ -71,3 +71,20 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Subscription data safeguards
+
+To verify the hardened `public.subscribers` policies locally, use the Supabase CLI test runner:
+
+```sh
+supabase db reset --linked
+supabase db test --pattern subscribers_policies
+```
+
+The companion test in `supabase/tests/subscribers_policies.test.sql` runs through the following scenarios:
+
+1. An authenticated member can only insert or update their row when the JWT `sub` and `email` claims match the payload being written.
+2. Anonymous or mismatched members are denied when attempting to touch someone else’s row.
+3. The Stripe sync edge function, which operates with `role = service_role`, can still upsert records for billing reconciliation.
+
+For production observability, consider enabling [Postgres audit triggers](https://supabase.com/docs/guides/database/extensions/pgaudit) or lightweight log-based alerts that watch for unexpected `UPDATE`/`INSERT` events on `public.subscribers`. Pairing those alerts with routine Supabase `db test` runs in CI will help surface policy regressions early.
