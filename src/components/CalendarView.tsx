@@ -53,9 +53,10 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
   const [editingMeal, setEditingMeal] = useState<any>(null);
   const [editingDate, setEditingDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const isCoach = profile.role === 'coach';
 
   useEffect(() => {
-    if (profile.role === 'coach') {
+    if (isCoach) {
       if (selectedClientId) {
         fetchMonthData();
       } else {
@@ -64,7 +65,7 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
     } else {
       fetchMonthData();
     }
-  }, [currentDate, profile.id, selectedClientId]);
+  }, [currentDate, profile.id, selectedClientId, isCoach]);
 
   const fetchMonthData = async () => {
     try {
@@ -86,7 +87,7 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
             calories
           )
         `)
-        .eq('client_id', profile.role === 'coach' ? selectedClientId : profile.id)
+        .eq('client_id', isCoach ? selectedClientId : profile.id)
         .gte('plan_date', startDate)
         .lte('plan_date', endDate);
 
@@ -146,7 +147,7 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
             note_text
           )
         `)
-        .eq('client_id', profile.role === 'coach' ? selectedClientId : profile.id)
+        .eq('client_id', isCoach ? selectedClientId : profile.id)
         .eq('plan_date', date);
 
       if (mealError) throw mealError;
@@ -155,7 +156,7 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
       const { data: coachNoteData } = await supabase
         .from('coach_motivational_notes')
         .select('message')
-        .eq('client_id', profile.role === 'coach' ? selectedClientId : profile.id)
+        .eq('client_id', isCoach ? selectedClientId : profile.id)
         .eq('note_date', date)
         .single();
 
@@ -207,6 +208,10 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
   };
 
   const deleteMeal = async (mealId: string) => {
+    if (!isCoach) {
+      return;
+    }
+
     try {
       // Delete ingredients first
       const { error: deleteIngredientsError } = await supabase
@@ -274,8 +279,10 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
               {format(currentDate, "MMMM yyyy", { locale: es })}
             </CardTitle>
             <div className="flex items-center gap-2">
-              <ExcelUpload profile={profile} onUploadComplete={fetchMonthData} />
-              <button 
+              {isCoach && (
+                <ExcelUpload profile={profile} onUploadComplete={fetchMonthData} />
+              )}
+              <button
                 onClick={() => navigateMonth('next')}
                 className="px-4 py-2 text-sm bg-secondary hover:bg-secondary/80 rounded"
               >
@@ -315,18 +322,20 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
                     <div className="font-medium text-sm">
                       {format(date, 'd')}
                     </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0"
-                      onClick={() => {
-                        setEditingDate(format(date, 'yyyy-MM-dd'));
-                        setEditingMeal(null);
-                        setIsEditorOpen(true);
-                      }}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
+                    {isCoach && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        onClick={() => {
+                          setEditingDate(format(date, 'yyyy-MM-dd'));
+                          setEditingMeal(null);
+                          setIsEditorOpen(true);
+                        }}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                   
                   {daySummary ? (
@@ -379,26 +388,28 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="capitalize">{meal.meal_type}</CardTitle>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setEditingMeal(meal);
-                            setEditingDate(selectedDay.date);
-                            setIsEditorOpen(true);
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => deleteMeal(meal.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {isCoach && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingMeal(meal);
+                              setEditingDate(selectedDay.date);
+                              setIsEditorOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteMeal(meal.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -444,24 +455,26 @@ const CalendarView = ({ profile }: CalendarViewProps) => {
       </Dialog>
 
       {/* Meal Editor */}
-      <MealEditor
-        profile={profile}
-        date={editingDate}
-        meal={editingMeal}
-        isOpen={isEditorOpen}
-        selectedClientId={selectedClientId}
-        onClose={() => {
-          setIsEditorOpen(false);
-          setEditingMeal(null);
-          setEditingDate('');
-        }}
-        onSave={() => {
-          fetchMonthData();
-          if (selectedDay) {
-            fetchDayDetails(selectedDay.date);
-          }
-        }}
-      />
+      {isCoach && (
+        <MealEditor
+          profile={profile}
+          date={editingDate}
+          meal={editingMeal}
+          isOpen={isEditorOpen}
+          selectedClientId={selectedClientId}
+          onClose={() => {
+            setIsEditorOpen(false);
+            setEditingMeal(null);
+            setEditingDate('');
+          }}
+          onSave={() => {
+            fetchMonthData();
+            if (selectedDay) {
+              fetchDayDetails(selectedDay.date);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
