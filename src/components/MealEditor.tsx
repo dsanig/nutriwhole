@@ -37,6 +37,7 @@ interface MealEditorProps {
 }
 
 const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave, selectedClientId }: MealEditorProps) => {
+  const isCoach = profile.role === 'coach';
   const [mealType, setMealType] = useState(meal?.meal_type || 'desayuno');
   const [ingredients, setIngredients] = useState<Ingredient[]>(meal?.ingredients || []);
   const [isSaving, setIsSaving] = useState(false);
@@ -81,6 +82,9 @@ const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave, selectedClie
   };
 
   const handleSave = async () => {
+    if (!isCoach) {
+      return;
+    }
     if (!mealType || ingredients.length === 0) {
       toast({
         variant: "destructive",
@@ -95,6 +99,15 @@ const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave, selectedClie
         variant: "destructive",
         title: "Error",
         description: "Todos los ingredientes deben tener un nombre"
+      });
+      return;
+    }
+
+    if (!meal?.id && !selectedClientId) {
+      toast({
+        variant: "destructive",
+        title: "Selecciona un cliente",
+        description: "Debes elegir un cliente antes de crear un plan."
       });
       return;
     }
@@ -140,8 +153,8 @@ const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave, selectedClie
         const { data: mealPlan, error: mealError } = await supabase
           .from('meal_plans')
           .insert({
-            client_id: profile.role === 'coach' ? selectedClientId : profile.id,
-            coach_id: profile.role === 'coach' ? profile.id : profile.id,
+            client_id: selectedClientId!,
+            coach_id: profile.id,
             plan_date: date,
             meal_type: mealType
           })
@@ -189,7 +202,7 @@ const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave, selectedClie
   };
 
   const handleDelete = async () => {
-    if (!meal?.id) return;
+    if (!isCoach || !meal?.id) return;
 
     setIsDeleting(true);
     try {
@@ -228,6 +241,10 @@ const MealEditor = ({ profile, date, meal, isOpen, onClose, onSave, selectedClie
       setIsDeleting(false);
     }
   };
+
+  if (!isCoach) {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
