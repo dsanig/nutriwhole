@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Trash2, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { generateSecurePassword } from '@/utils/password';
 
 interface Client {
   id: string;
@@ -188,7 +189,9 @@ const CoachPanel = () => {
       if (coachError) throw coachError;
 
       // Create new user account with temporary password
-      const tempPassword = Math.random().toString(36).slice(-12) + 'A1!';
+      // TODO: Consider moving this flow to a Supabase admin invite/password reset handled server-side
+      //       to avoid generating credentials in the browser entirely.
+      const tempPassword = generateSecurePassword();
       
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: newClientEmail,
