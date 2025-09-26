@@ -116,8 +116,7 @@ const AdminPanel = () => {
         password: newUser.password,
         options: {
           data: {
-            full_name: newUser.fullName,
-            role: newUser.role
+            full_name: newUser.fullName
           }
         }
       });
@@ -125,17 +124,26 @@ const AdminPanel = () => {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Insert profile manually since the trigger might not work for admin-created users
-        const { error: profileError } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .insert({
-            user_id: authData.user.id,
-            email: newUser.email,
-            full_name: newUser.fullName,
-            role: newUser.role
-          });
+          .select('*')
+          .eq('user_id', authData.user.id)
+          .maybeSingle();
 
         if (profileError) throw profileError;
+
+        if (!profile) {
+          throw new Error('No se pudo encontrar el perfil creado automáticamente.');
+        }
+
+        if (newUser.role !== 'client') {
+          const { error: roleError } = await supabase.rpc('set_profile_role', {
+            target_profile_id: profile.id,
+            new_role: newUser.role
+          });
+
+          if (roleError) throw roleError;
+        }
       }
 
       toast({
