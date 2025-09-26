@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,11 +15,10 @@ const Auth = () => {
 
   // Form states
   const [signInData, setSignInData] = useState({ email: '', password: '' });
-  const [signUpData, setSignUpData] = useState({ 
-    email: '', 
-    password: '', 
-    fullName: '', 
-    role: 'client' as 'coach' | 'client' 
+  const [signUpData, setSignUpData] = useState({
+    email: '',
+    password: '',
+    fullName: ''
   });
 
   if (loading) {
@@ -57,10 +55,9 @@ const Auth = () => {
     setIsLoading(true);
 
     const { error } = await signUp(
-      signUpData.email, 
-      signUpData.password, 
-      signUpData.fullName,
-      signUpData.role
+      signUpData.email,
+      signUpData.password,
+      signUpData.fullName
     );
 
     if (error) {
@@ -161,23 +158,9 @@ const Auth = () => {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-role">Tipo de cuenta</Label>
-                  <Select 
-                    value={signUpData.role} 
-                    onValueChange={(value: 'coach' | 'client') => 
-                      setSignUpData({ ...signUpData, role: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="client">Cliente</SelectItem>
-                      <SelectItem value="coach">Coach/Nutricionista</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Tu cuenta se creará como <strong>cliente</strong>. Contacta con un administrador si necesitas otro rol.
+                </p>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? 'Registrando...' : 'Registrarse'}
                 </Button>

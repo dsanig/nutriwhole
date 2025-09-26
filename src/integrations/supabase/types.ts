@@ -384,6 +384,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      set_profile_role: {
+        Args: {
+          target_profile_id: string
+          new_role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: Database["public"]["Tables"]["profiles"]["Row"]
+      }
     }
     Enums: {
       app_role: "admin" | "coach" | "client"
