@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Trash2, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
 
 interface Client {
@@ -27,6 +28,22 @@ interface AssignmentRequest {
   message: string | null;
   created_at: string;
 }
+
+const isPostgrestError = (error: unknown): error is PostgrestError => {
+  return typeof error === 'object' && error !== null && 'code' in error && 'message' in error;
+};
+
+const getAuthorizationErrorMessage = (error: unknown, fallback: string) => {
+  if (isPostgrestError(error) && error.code === '42501') {
+    return 'No tienes autorización para asignar este cliente. Asegúrate de tener una solicitud aceptada.';
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
 
 const CoachPanel = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -245,7 +262,7 @@ const CoachPanel = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo crear el cliente"
+        description: getAuthorizationErrorMessage(error, "No se pudo crear el cliente")
       });
     } finally {
       setIsCreating(false);
@@ -273,7 +290,34 @@ const CoachPanel = () => {
         console.log('Coach profile result:', { coachProfile, coachError });
         if (coachError) throw coachError;
 
-        // Check if assignment already exists
+        const { data: updatedRequest, error: acceptError } = await supabase
+          .from('coach_assignment_requests')
+          .update({ status: 'accepted' })
+          .eq('id', requestId)
+          .eq('status', 'pending')
+          .select('id')
+          .maybeSingle();
+
+        console.log('Accept request result:', { updatedRequest, acceptError });
+        if (acceptError) throw acceptError;
+
+        const statusWasPending = Boolean(updatedRequest);
+
+        if (!statusWasPending) {
+          const { data: acceptedRequest, error: acceptedLookupError } = await supabase
+            .from('coach_assignment_requests')
+            .select('id')
+            .eq('id', requestId)
+            .eq('status', 'accepted')
+            .maybeSingle();
+
+          console.log('Accepted request lookup:', { acceptedRequest, acceptedLookupError });
+          if (acceptedLookupError) throw acceptedLookupError;
+          if (!acceptedRequest) {
+            throw new Error('La solicitud ya no está disponible para ser aceptada.');
+          }
+        }
+
         const { data: existingAssignment, error: checkError } = await supabase
           .from('clients_coaches')
           .select('id')
@@ -282,8 +326,8 @@ const CoachPanel = () => {
           .maybeSingle();
 
         console.log('Existing assignment check:', { existingAssignment, checkError });
+        if (checkError) throw checkError;
 
-        // Only create assignment if it doesn't exist
         if (!existingAssignment) {
           console.log('Creating assignment:', { coach_id: coachProfile.id, client_id: request.client_id });
           const { error: assignError } = await supabase
@@ -294,20 +338,23 @@ const CoachPanel = () => {
             });
 
           console.log('Assignment result:', { assignError });
-          if (assignError) throw assignError;
+          if (assignError) {
+            if (statusWasPending) {
+              const { error: revertError } = await supabase
+                .from('coach_assignment_requests')
+                .update({ status: 'pending' })
+                .eq('id', requestId)
+                .eq('status', 'accepted');
+
+              console.log('Revert request status result:', { revertError });
+            }
+
+            throw assignError;
+          }
         } else {
           console.log('Assignment already exists, skipping creation');
+          wasAlreadyAccepted = true;
         }
-
-        // Update the request status to accepted
-        const { error: acceptError } = await supabase
-          .from('coach_assignment_requests')
-          .update({ status: 'accepted' })
-          .eq('id', requestId)
-          .eq('status', 'pending');
-          
-        console.log('Accept request result:', { acceptError });
-        if (acceptError) throw acceptError;
       }
 
       // For rejections, check if request still exists and is pending
@@ -364,7 +411,7 @@ const CoachPanel = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo procesar la solicitud"
+        description: getAuthorizationErrorMessage(error, "No se pudo procesar la solicitud")
       });
     }
   };
