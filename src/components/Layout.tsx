@@ -1,9 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Home, Settings, LogOut, User } from 'lucide-react';
+import { Calendar, Home, Settings, LogOut, User, Shield, BarChart3, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 import TodayView from '@/components/TodayView';
@@ -13,11 +14,97 @@ import CoachPanel from '@/components/CoachPanel';
 import ClientPanel from '@/components/ClientPanel';
 import { SubscriptionRequired } from '@/components/SubscriptionRequired';
 import { SubscriptionStatus } from '@/components/SubscriptionStatus';
+import SecurityCenter from '@/components/security/SecurityCenter';
+import TelemetryDashboard from '@/components/telemetry/TelemetryDashboard';
+import { supabase } from '@/integrations/supabase/client';
+import AiInsightsTab from '@/components/ai/AiInsightsTab';
 
 const Layout = () => {
   const { user, profile, signOut, loading } = useAuth();
   const { subscriptionStatus, isLoading: subscriptionLoading, checkSubscription } = useSubscription();
   const { toast } = useToast();
+
+  const profileId = profile?.user_id;
+  const [activeTab, setActiveTab] = useState('today');
+
+  useEffect(() => {
+    if (!profile) return;
+    if (profile.role === 'client') {
+      setActiveTab('client');
+    } else {
+      setActiveTab('today');
+    }
+  }, [profile?.role]);
+
+  useEffect(() => {
+    if (!profileId) {
+      return;
+    }
+
+    let inactivityTimer: number;
+    let lastUpdate = 0;
+    let destroyed = false;
+
+    const updateActivity = async () => {
+      const now = Date.now();
+      if (now - lastUpdate < 60_000) {
+        return;
+      }
+      lastUpdate = now;
+      try {
+        await supabase
+          .from('profiles')
+          .update({ last_active_at: new Date().toISOString() })
+          .eq('user_id', profileId);
+        await supabase.rpc('record_session_event', {
+          p_event_type: 'activity_heartbeat',
+          p_metadata: { path: window.location.pathname }
+        });
+      } catch (error) {
+        console.error('No se pudo registrar actividad', error);
+      }
+    };
+
+    const enforceTimeout = async () => {
+      try {
+        await supabase.rpc('record_session_event', {
+          p_event_type: 'session_timeout',
+          p_metadata: { reason: 'inactivity' }
+        });
+      } catch (error) {
+        console.error('No se pudo registrar el cierre de sesión por inactividad', error);
+      }
+      await signOut();
+      if (!destroyed) {
+        toast({
+          title: 'Sesión cerrada por inactividad',
+          description: 'Vuelve a iniciar sesión y confirma tu 2FA para continuar.'
+        });
+      }
+    };
+
+    const scheduleTimeout = () => {
+      window.clearTimeout(inactivityTimer);
+      inactivityTimer = window.setTimeout(enforceTimeout, 15 * 60 * 1000);
+    };
+
+    const handleActivity = () => {
+      scheduleTimeout();
+      updateActivity();
+    };
+
+    const events: Array<keyof WindowEventMap> = ['mousemove', 'keydown', 'touchstart'];
+    events.forEach((eventName) => window.addEventListener(eventName, handleActivity));
+    document.addEventListener('visibilitychange', handleActivity);
+    handleActivity();
+
+    return () => {
+      destroyed = true;
+      window.clearTimeout(inactivityTimer);
+      events.forEach((eventName) => window.removeEventListener(eventName, handleActivity));
+      document.removeEventListener('visibilitychange', handleActivity);
+    };
+  }, [profileId, signOut, toast]);
 
   if (loading) {
     return (
@@ -38,7 +125,6 @@ const Layout = () => {
       </div>
     );
   }
-
   // Check subscription for clients (allow exempt accounts)
   if (profile.role === 'client' && !profile.subscription_exempt && !subscriptionStatus.subscribed) {
     return (
@@ -96,12 +182,8 @@ const Layout = () => {
           <SubscriptionStatus />
         )}
         
-        <Tabs defaultValue={profile.role === 'client' ? 'client' : 'today'} className="w-full">
-          <TabsList className={`grid w-full mb-6 ${
-            profile.role === 'admin' ? 'grid-cols-3' : 
-            profile.role === 'coach' ? 'grid-cols-3' : 
-            profile.role === 'client' ? 'grid-cols-3' : 'grid-cols-2'
-          }`}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full mb-6 grid-cols-6">
             {profile.role !== 'client' && (
               <TabsTrigger value="today" className="flex items-center gap-2">
                 <Home className="w-4 h-4" />
@@ -142,10 +224,22 @@ const Layout = () => {
                 </TabsTrigger>
               </>
             )}
+            <TabsTrigger value="insights" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Indicadores
+            </TabsTrigger>
+            <TabsTrigger value="ai" className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              Coach IA
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Seguridad
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="today">
-            <TodayView profile={profile} />
+            <TodayView profile={profile} onOpenAiTab={() => setActiveTab('ai')} />
           </TabsContent>
 
           <TabsContent value="calendar">
@@ -169,6 +263,18 @@ const Layout = () => {
               <ClientPanel />
             </TabsContent>
           )}
+
+          <TabsContent value="insights">
+            <TelemetryDashboard profile={profile} />
+          </TabsContent>
+
+          <TabsContent value="ai">
+            <AiInsightsTab profile={profile} />
+          </TabsContent>
+
+          <TabsContent value="security">
+            <SecurityCenter />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
