@@ -2,29 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const env = (import.meta.env ?? {}) as Record<string, string | undefined>;
-
-const coalesceEnv = (...values: (string | undefined)[]) => {
-  for (const value of values) {
-    if (!value) continue;
-    const trimmed = value.trim();
-    if (trimmed.length > 0) {
-      return trimmed;
-    }
-  }
-  return undefined;
-};
-
-const derivedSupabaseUrl = env.VITE_SUPABASE_PROJECT_ID
-  ? `https://${env.VITE_SUPABASE_PROJECT_ID}.supabase.co`
-  : undefined;
-
-const SUPABASE_URL =
-  coalesceEnv(env.VITE_SUPABASE_URL, derivedSupabaseUrl) ??
-  "https://wzqfnuttghsivscjsfap.supabase.co";
-
-const SUPABASE_PUBLISHABLE_KEY =
-  coalesceEnv(env.VITE_SUPABASE_ANON_KEY, env.VITE_SUPABASE_PUBLISHABLE_KEY) ??
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "https://wzqfnuttghsivscjsfap.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6cWZudXR0Z2hzaXZzY2pzZmFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyODY0NzgsImV4cCI6MjA2ODg2MjQ3OH0.Kjhat4Dgi6zeurmW8U8pybMlbdtn1PMimN8KbIVHfcI";
 
 // Import the supabase client like this:

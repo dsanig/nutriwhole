@@ -113,8 +113,6 @@ The remaining execution work relies on the following environment variables and S
 
 Document the values in your team’s secrets manager and populate them in the Supabase dashboard (`Project Settings` → `API` → `Edge Functions`) as well as the local `.env` file when running the stack offline.
 
-> **Heads-up:** the Docker build expects `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to be set. If you previously relied on `VITE_SUPABASE_PUBLISHABLE_KEY`, keep it alongside the new `VITE_SUPABASE_ANON_KEY` so both local development and container builds resolve the correct publishable key.
-
 ### Deployment checklist
 
 1. **Apply the new migrations:**
