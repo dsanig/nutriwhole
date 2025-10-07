@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { fingerprintDevice } from '@/lib/security';
 
@@ -37,8 +37,22 @@ export const useAuth = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const loadProfile = useCallback(async (userId: string) => {
+    if (!userId) {
+      return;
+    }
+
+    setLoading(true);
+
     try {
       const { data: profileData, error } = await supabase
         .from('profiles')
@@ -48,64 +62,61 @@ export const useAuth = () => {
 
       if (error) {
         console.error('Error fetching profile:', error);
-        setProfile(null);
+        if (isMountedRef.current) {
+          setProfile(null);
+        }
         return;
       }
-    );
 
-    // Check for existing session
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      if (isMountedRef.current) {
+        setProfile(profileData ?? null);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      if (isMountedRef.current) {
+        setProfile(null);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []);
 
-        if (session?.user) {
-          const fetchProfile = async () => {
-            try {
-              const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('user_id', session.user.id)
-                .maybeSingle();
+  const applySession = useCallback(
+    (nextSession: Session | null) => {
+      if (!isMountedRef.current) {
+        return;
+      }
 
-              if (error) {
-                console.error('Error fetching profile:', error);
-              }
+      setSession(nextSession);
+      const nextUser = nextSession?.user ?? null;
+      setUser(nextUser);
 
-              setProfile(profile);
-              setLoading(false);
-            } catch (error) {
-              console.error('Error fetching profile:', error);
-              setProfile(null);
-              setLoading(false);
-            }
-          };
-
-          fetchProfile();
-        } else {
-          setLoading(false);
-        }
-      })
-      .catch((error) => {
-        console.error('Error getting existing session:', error);
-        setSession(null);
-        setUser(null);
+      if (nextUser) {
+        loadProfile(nextUser.id);
+      } else {
         setProfile(null);
         setLoading(false);
-      });
+      }
+    },
+    [loadProfile]
+  );
+
+  useEffect(() => {
+    let active = true;
 
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => {
-        if (!isMounted) {
+        if (!active || !isMountedRef.current) {
           return;
         }
         applySession(session);
       })
       .catch((error) => {
         console.error('Error getting existing session:', error);
-        if (!isMounted) {
+        if (!active || !isMountedRef.current) {
           return;
         }
         setSession(null);
@@ -114,8 +125,17 @@ export const useAuth = () => {
         setLoading(false);
       });
 
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!active || !isMountedRef.current) {
+        return;
+      }
+      applySession(nextSession);
+    });
+
     return () => {
-      isMounted = false;
+      active = false;
       subscription.unsubscribe();
     };
   }, [applySession]);
@@ -137,9 +157,13 @@ export const useAuth = () => {
     return { error };
   };
 
-  const signIn = async (email: string, password: string, options: SignInOptions = {}): Promise<SignInResult> => {
+  const signIn = async (
+    email: string,
+    password: string,
+    options: SignInOptions = {}
+  ): Promise<SignInResult> => {
     const deviceFingerprint = fingerprintDevice();
-    const { data, error } = await supabase.functions.invoke("mfa-verify-login", {
+    const { data, error } = await supabase.functions.invoke('mfa-verify-login', {
       body: {
         email,
         password,
@@ -180,7 +204,7 @@ export const useAuth = () => {
   };
 
   const requestPasskeyChallenge = async (email: string) => {
-    const { data, error } = await supabase.functions.invoke("mfa-passkey-challenge", {
+    const { data, error } = await supabase.functions.invoke('mfa-passkey-challenge', {
       body: { email }
     });
     if (error) {
