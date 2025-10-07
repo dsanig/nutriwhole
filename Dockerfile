@@ -16,6 +16,7 @@ RUN npm run build
 # --- serve with Caddy (no TLS here; Cloudflare handles TLS) ---
 FROM caddy:2 AS runner
 # Caddy will listen on :8080 (see Caddyfile)
+RUN apk add --no-cache wget
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY --from=builder /app/dist /usr/share/caddy
 EXPOSE 8080
