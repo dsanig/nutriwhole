@@ -280,13 +280,157 @@ export type Database = {
           },
         ]
       }
+      mfa_backup_codes: {
+        Row: {
+          consumed: boolean
+          consumed_at: string | null
+          created_at: string
+          factor_id: string | null
+          id: string
+          code_hash: string
+          code_hint: string | null
+          user_id: string
+        }
+        Insert: {
+          consumed?: boolean
+          consumed_at?: string | null
+          created_at?: string
+          factor_id?: string | null
+          id?: string
+          code_hash: string
+          code_hint?: string | null
+          user_id: string
+        }
+        Update: {
+          consumed?: boolean
+          consumed_at?: string | null
+          created_at?: string
+          factor_id?: string | null
+          id?: string
+          code_hash?: string
+          code_hint?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mfa_backup_codes_factor_id_fkey"
+            columns: ["factor_id"]
+            isOneToOne: false
+            referencedRelation: "mfa_factors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mfa_backup_codes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mfa_factors: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string
+          factor_type: string
+          friendly_name: string | null
+          id: string
+          secret: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string
+          factor_type: string
+          friendly_name?: string | null
+          id?: string
+          secret?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string
+          factor_type?: string
+          friendly_name?: string | null
+          id?: string
+          secret?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mfa_factors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mfa_override_tokens: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          issued_by: string | null
+          reason: string | null
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          issued_by?: string | null
+          reason?: string | null
+          token_hash: string
+          user_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          issued_by?: string | null
+          reason?: string | null
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mfa_override_tokens_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mfa_override_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
           email: string
           full_name: string | null
           id: string
+          last_active_at: string | null
+          mfa_enrolled: boolean
+          mfa_required: boolean
+          mfa_verified_at: string | null
+          premium_locked: boolean
+          premium_locked_reason: string | null
           role: Database["public"]["Enums"]["app_role"]
+          stripe_mfa_synced_at: string | null
           subscription_exempt: boolean
           updated_at: string | null
           user_id: string
@@ -296,7 +440,14 @@ export type Database = {
           email: string
           full_name?: string | null
           id?: string
+          last_active_at?: string | null
+          mfa_enrolled?: boolean
+          mfa_required?: boolean
+          mfa_verified_at?: string | null
+          premium_locked?: boolean
+          premium_locked_reason?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          stripe_mfa_synced_at?: string | null
           subscription_exempt?: boolean
           updated_at?: string | null
           user_id: string
@@ -306,7 +457,14 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          last_active_at?: string | null
+          mfa_enrolled?: boolean
+          mfa_required?: boolean
+          mfa_verified_at?: string | null
+          premium_locked?: boolean
+          premium_locked_reason?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          stripe_mfa_synced_at?: string | null
           subscription_exempt?: boolean
           updated_at?: string | null
           user_id?: string
@@ -351,7 +509,29 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      mfa_backup_code_status: {
+        Row: {
+          id: string
+          user_id: string
+          consumed: boolean
+          consumed_at: string | null
+          code_hint: string | null
+          created_at: string | null
+        }
+        Relationships: []
+      }
+      mfa_factor_summaries: {
+        Row: {
+          id: string
+          user_id: string
+          factor_type: string
+          friendly_name: string | null
+          confirmed_at: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_coach_view_client_profile: {
