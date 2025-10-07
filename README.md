@@ -88,3 +88,54 @@ The companion test in `supabase/tests/subscribers_policies.test.sql` runs throug
 3. The Stripe sync edge function, which operates with `role = service_role`, can still upsert records for billing reconciliation.
 
 For production observability, consider enabling [Postgres audit triggers](https://supabase.com/docs/guides/database/extensions/pgaudit) or lightweight log-based alerts that watch for unexpected `UPDATE`/`INSERT` events on `public.subscribers`. Pairing those alerts with routine Supabase `db test` runs in CI will help surface policy regressions early.
+
+## Environment additions
+
+Recent security and telemetry upgrades introduce two new secrets that must be configured before running the updated middleware:
+
+- `GEMINI_API_KEY` – Google Gemini API key used by the `gemini-insights` edge function to generate structured AI recommendations.
+- `TELEMETRY_CONNECTOR_TOKEN` – Shared secret for the `ingest-telemetry` endpoint when pushing wearable or lab metrics from background connectors. When omitted, authenticated requests from authorized users are still permitted.
+
+Add both values to your Supabase environment (`supabase/.env` or dashboard) and mirror them locally in `.env` when executing the new workflows.
+
+### Additional secrets for the whole-health rollout
+
+The remaining execution work relies on the following environment variables and Supabase secrets:
+
+| Scope | Variable | Purpose |
+| --- | --- | --- |
+| Passkeys | `PASSKEY_RP_ID`, `PASSKEY_RP_NAME`, `PASSKEY_ORIGIN` | Configure the WebAuthn relying party information used by the MFA edge functions. Set `PASSKEY_RP_ID` to your production domain, `PASSKEY_ORIGIN` to the HTTPS origin, and `PASSKEY_RP_NAME` to the user-facing organization name. |
+| Connectors | `APPLE_HEALTH_BASE_URL`, `APPLE_HEALTH_API_KEY` | Apple Health partner endpoint and bearer token consumed by `sync-apple-health`. |
+| Connectors | `GOOGLE_FIT_BASE_URL`, `GOOGLE_FIT_CLIENT_ID`, `GOOGLE_FIT_CLIENT_SECRET` | OAuth client used by `sync-google-fit` to refresh access tokens and pull datasets. |
+| Connectors | `LAB_RESULTS_BASE_URL`, `LAB_RESULTS_API_KEY` | Lab integration endpoint leveraged by `sync-lab-results` to ingest biomarker panels. |
+| Edge orchestration | `SUPABASE_SERVICE_ROLE_KEY` | Required for the orchestration functions (`refresh-telemetry-integrations`, `lifestyle-automation-dispatcher`) to authenticate against other edge handlers. Already present for existing flows but must be kept in sync across environments. |
+| MFA + Stripe | `STRIPE_SECRET_KEY` | Ensures Stripe metadata stays aligned with MFA enforcement after passkey enrollment or revocation. |
+
+Document the values in your team’s secrets manager and populate them in the Supabase dashboard (`Project Settings` → `API` → `Edge Functions`) as well as the local `.env` file when running the stack offline.
+
+### Deployment checklist
+
+1. **Apply the new migrations:**
+   ```sh
+   supabase db push
+   ```
+   This creates the passkey credential tables, automation queue, and connector artifacts introduced in `20251001120000_finalize_passkeys_and_automation.sql`.
+
+2. **Deploy the edge functions:**
+   ```sh
+   supabase functions deploy \
+     mfa-passkey-start \
+     mfa-passkey-finish \
+     mfa-passkey-challenge \
+     mfa-passkey-revoke \
+     sync-apple-health \
+     sync-google-fit \
+     sync-lab-results \
+     refresh-telemetry-integrations \
+     lifestyle-automation-dispatcher
+   ```
+   Re-deploy existing functions (`gemini-insights`, `apply-lifestyle-adjustments`, etc.) if you changed their configuration or secrets.
+
+3. **Schedule background jobs:** Use Supabase scheduled triggers (or your orchestration platform) to invoke `refresh-telemetry-integrations` and `lifestyle-automation-dispatcher` at the cadence agreed with product (e.g., every 30 minutes for wearables and every hour for lifestyle automation).
+
+4. **Update `.env` locally:** Mirror the secret keys listed above so the Vite app and Supabase CLI run against the same configuration when validating flows.

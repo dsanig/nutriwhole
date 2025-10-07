@@ -9,6 +9,15 @@ export interface Profile {
   full_name: string | null;
   role: 'admin' | 'coach' | 'client';
   subscription_exempt: boolean; // Allows access without active subscription
+  premium_locked?: boolean;
+  premium_locked_reason?: string | null;
+  mfa_required?: boolean;
+  mfa_enrolled?: boolean;
+  mfa_verified_at?: string | null;
+}
+
+export interface SignInResult {
+  error?: Error;
 }
 
 export const useAuth = () => {
@@ -108,13 +117,17 @@ export const useAuth = () => {
     return { error };
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<SignInResult> => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
-    
-    return { error };
+
+    if (error) {
+      return { error: new Error(error.message) };
+    }
+
+    return {};
   };
 
   const signOut = async () => {
