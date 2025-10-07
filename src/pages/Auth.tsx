@@ -1,20 +1,30 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { startAuthentication } from '@simplewebauthn/browser';
 
 const Auth = () => {
-  const { user, signIn, signUp, loading } = useAuth();
+  const { user, signIn, signUp, loading, requestPasskeyChallenge } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   const [signInData, setSignInData] = useState({ email: '', password: '' });
-  const [signUpData, setSignUpData] = useState({ email: '', password: '', fullName: '' });
+  const passkeySupported = typeof window !== 'undefined' && 'PublicKeyCredential' in window;
+  const [mfaStep, setMfaStep] = useState(false);
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [totpCode, setTotpCode] = useState('');
+  const [backupCode, setBackupCode] = useState('');
+  const [rememberDevice, setRememberDevice] = useState(true);
+  const [deviceName, setDeviceName] = useState('Mi dispositivo');
+  const [passkeyPending, setPasskeyPending] = useState(false);
+  const [signUpData, setSignUpData] = useState({
+    email: '',
+    password: '',
+    fullName: ''
+  });
 
   if (loading) {
     return (
@@ -32,21 +42,144 @@ const Auth = () => {
     event.preventDefault();
     setIsLoading(true);
 
-    const result = await signIn(signInData.email, signInData.password);
+    if (mfaStep) {
+      if (!useBackupCode && totpCode.length !== 6) {
+        toast({
+          variant: "destructive",
+          title: "Código inválido",
+          description: "Ingresa el código de 6 dígitos generado por tu app."
+        });
+        setIsLoading(false);
+        return;
+      }
+      if (useBackupCode && backupCode.trim().length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Código de respaldo requerido",
+          description: "Ingresa uno de los códigos que guardaste al activar MFA."
+        });
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    const result = await signIn(signInData.email, signInData.password, mfaStep ? {
+      code: useBackupCode ? undefined : totpCode,
+      backupCode: useBackupCode ? backupCode : undefined,
+      rememberDevice,
+      deviceName: deviceName.trim() || undefined
+    } : {});
 
     if (result.error) {
       toast({
-        variant: 'destructive',
-        title: 'Error al iniciar sesión',
+        variant: "destructive",
+        title: "Error al iniciar sesión",
         description: result.error.message
       });
+    } else if (result.requiresMfa) {
+      setMfaStep(true);
+      setTotpCode('');
+      setBackupCode('');
+      setUseBackupCode(false);
+      toast({
+        title: "Verifica tu identidad",
+        description: "Ingresa el código de tu app o un código de respaldo para continuar."
+      });
+    } else if (result.backupCodes && result.backupCodes.length > 0) {
+      toast({
+        title: "Códigos de respaldo actualizados",
+        description: "Guarda los nuevos códigos entregados por soporte."
+      });
+      setMfaStep(false);
+      setTotpCode('');
+      setBackupCode('');
+      setUseBackupCode(false);
+    } else {
+      setMfaStep(false);
+      setTotpCode('');
+      setBackupCode('');
+      setUseBackupCode(false);
     }
 
     setIsLoading(false);
   };
 
-  const handleSignUp = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handlePasskeySignIn = async () => {
+    if (!passkeySupported) {
+      toast({
+        variant: 'destructive',
+        title: 'Passkey no disponible',
+        description: 'Tu dispositivo o navegador no soporta passkeys'
+      });
+      return;
+    }
+
+    if (!signInData.email || !signInData.password) {
+      toast({
+        variant: 'destructive',
+        title: 'Completa tu email y contraseña',
+        description: 'Necesitamos tus credenciales antes de verificar la passkey'
+      });
+      return;
+    }
+
+    try {
+      setPasskeyPending(true);
+      const { options, error } = await requestPasskeyChallenge(signInData.email);
+      if (error) {
+        throw error;
+      }
+      if (!options) {
+        toast({
+          variant: 'destructive',
+          title: 'Passkey no registrada',
+          description: 'Activa una passkey desde el Centro de Seguridad antes de usarla'
+        });
+        return;
+      }
+
+      const assertion = await startAuthentication(options as never);
+      const result = await signIn(signInData.email, signInData.password, {
+        passkeyAssertion: assertion,
+        rememberDevice,
+        deviceName: rememberDevice ? deviceName.trim() || undefined : undefined
+      });
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (result.requiresMfa) {
+        setMfaStep(true);
+        toast({
+          title: 'Verificación adicional requerida',
+          description: 'Ingresa tu código MFA o un respaldo para completar el acceso'
+        });
+        return;
+      }
+
+      setMfaStep(false);
+      setTotpCode('');
+      setBackupCode('');
+      setUseBackupCode(false);
+      toast({
+        title: 'Ingreso exitoso',
+        description: 'Validamos tu passkey correctamente'
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'No se pudo validar la passkey',
+        description: error instanceof Error ? error.message : 'Intenta nuevamente'
+      });
+    } finally {
+      setPasskeyPending(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
 
     const { error } = await signUp(signUpData.email, signUpData.password, signUpData.fullName);
@@ -93,6 +226,7 @@ const Auth = () => {
                     value={signInData.email}
                     onChange={(event) => setSignInData((state) => ({ ...state, email: event.target.value }))}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -104,10 +238,92 @@ const Auth = () => {
                     value={signInData.password}
                     onChange={(event) => setSignInData((state) => ({ ...state, password: event.target.value }))}
                     required
+                    disabled={isLoading}
                   />
                 </div>
+
+                {mfaStep && (
+                  <div className="space-y-4 rounded-lg border bg-muted/40 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">Autenticación en dos pasos</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setUseBackupCode((prev) => !prev);
+                          setTotpCode('');
+                          setBackupCode('');
+                        }}
+                      >
+                        {useBackupCode ? 'Usar código de app' : 'Usar código de respaldo'}
+                      </Button>
+                    </div>
+
+                    {!useBackupCode ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="totp-code">Código de tu app</Label>
+                        <Input
+                          id="totp-code"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={totpCode}
+                          onChange={(event) => setTotpCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                          placeholder="123456"
+                          disabled={isLoading}
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label htmlFor="backup-code">Código de respaldo</Label>
+                        <Input
+                          id="backup-code"
+                          value={backupCode}
+                          onChange={(event) => setBackupCode(event.target.value.trim())}
+                          placeholder="XXXX-XXXX-XXXX-XXXX"
+                          disabled={isLoading}
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="remember-device"
+                        checked={rememberDevice}
+                        onCheckedChange={(checked) => setRememberDevice(Boolean(checked))}
+                        disabled={isLoading}
+                      />
+                      <Label htmlFor="remember-device" className="text-sm">
+                        Recordar este dispositivo
+                      </Label>
+                    </div>
+                    {rememberDevice && (
+                      <div className="space-y-2">
+                        <Label htmlFor="device-name">Nombre del dispositivo</Label>
+                        <Input
+                          id="device-name"
+                          value={deviceName}
+                          onChange={(event) => setDeviceName(event.target.value)}
+                          placeholder="Ej. MacBook de Ana"
+                          disabled={isLoading}
+                        />
+                      </div>
+                    )}
+                    {passkeySupported && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handlePasskeySignIn}
+                        disabled={passkeyPending}
+                      >
+                        {passkeyPending ? 'Validando passkey...' : 'Confirmar con passkey'}
+                      </Button>
+                    )}
+                  </div>
+                )}
+
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Accediendo…' : 'Iniciar sesión'}
+                  {isLoading ? 'Procesando...' : mfaStep ? 'Confirmar acceso' : 'Iniciar Sesión'}
                 </Button>
               </form>
             </TabsContent>
