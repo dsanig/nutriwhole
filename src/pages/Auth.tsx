@@ -1,9 +1,5 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,7 +11,6 @@ const Auth = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Form states
   const [signInData, setSignInData] = useState({ email: '', password: '' });
   const passkeySupported = typeof window !== 'undefined' && 'PublicKeyCredential' in window;
   const [mfaStep, setMfaStep] = useState(false);
@@ -43,8 +38,8 @@ const Auth = () => {
     return <Navigate to="/" replace />;
   }
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSignIn = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setIsLoading(true);
 
     if (mfaStep) {
@@ -187,22 +182,18 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await signUp(
-      signUpData.email,
-      signUpData.password,
-      signUpData.fullName
-    );
+    const { error } = await signUp(signUpData.email, signUpData.password, signUpData.fullName);
 
     if (error) {
       toast({
-        variant: "destructive",
-        title: "Error al registrarse",
+        variant: 'destructive',
+        title: 'Error al registrarse',
         description: error.message
       });
     } else {
       toast({
-        title: "Registro exitoso",
-        description: "Tu cuenta ha sido creada. Ya puedes iniciar sesión."
+        title: 'Revisa tu correo electrónico',
+        description: 'Te enviamos un enlace para confirmar tu cuenta.'
       });
     }
 
@@ -210,34 +201,30 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">
-            NutriWhole
-            <span className="text-sm font-normal text-muted-foreground ml-2">by INMEDSA</span>
-          </CardTitle>
-          <CardDescription>
-            Gestión de planes nutricionales
+    <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
+      <Card className="w-full max-w-xl">
+        <CardHeader className="space-y-2">
+          <CardTitle className="text-2xl font-semibold text-center">NutriWhole</CardTitle>
+          <CardDescription className="text-center">
+            Inicia sesión para continuar o crea una cuenta nueva.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Iniciar Sesión</TabsTrigger>
+              <TabsTrigger value="signin">Iniciar sesión</TabsTrigger>
               <TabsTrigger value="signup">Registrarse</TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="signin" className="space-y-4">
+            <TabsContent value="signin" className="mt-6">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
+                  <Label htmlFor="signin-email">Correo electrónico</Label>
                   <Input
                     id="signin-email"
                     type="email"
-                    placeholder="tu@email.com"
+                    placeholder="tu@correo.com"
                     value={signInData.email}
-                    onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
+                    onChange={(event) => setSignInData((state) => ({ ...state, email: event.target.value }))}
                     required
                     disabled={isLoading}
                   />
@@ -247,8 +234,9 @@ const Auth = () => {
                   <Input
                     id="signin-password"
                     type="password"
+                    placeholder="••••••••"
                     value={signInData.password}
-                    onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
+                    onChange={(event) => setSignInData((state) => ({ ...state, password: event.target.value }))}
                     required
                     disabled={isLoading}
                   />
@@ -339,28 +327,26 @@ const Auth = () => {
                 </Button>
               </form>
             </TabsContent>
-            
-            <TabsContent value="signup" className="space-y-4">
+            <TabsContent value="signup" className="mt-6">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">Nombre completo</Label>
                   <Input
                     id="signup-name"
-                    type="text"
                     placeholder="Tu nombre"
                     value={signUpData.fullName}
-                    onChange={(e) => setSignUpData({ ...signUpData, fullName: e.target.value })}
+                    onChange={(event) => setSignUpData((state) => ({ ...state, fullName: event.target.value }))}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-email">Correo electrónico</Label>
                   <Input
                     id="signup-email"
                     type="email"
-                    placeholder="tu@email.com"
+                    placeholder="tu@correo.com"
                     value={signUpData.email}
-                    onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
+                    onChange={(event) => setSignUpData((state) => ({ ...state, email: event.target.value }))}
                     required
                   />
                 </div>
@@ -369,16 +355,14 @@ const Auth = () => {
                   <Input
                     id="signup-password"
                     type="password"
+                    placeholder="••••••••"
                     value={signUpData.password}
-                    onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
+                    onChange={(event) => setSignUpData((state) => ({ ...state, password: event.target.value }))}
                     required
                   />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Tu cuenta se creará como <strong>cliente</strong>. Contacta con un administrador si necesitas otro rol.
-                </p>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Registrando...' : 'Registrarse'}
+                  {isLoading ? 'Creando cuenta…' : 'Registrarse'}
                 </Button>
               </form>
             </TabsContent>
