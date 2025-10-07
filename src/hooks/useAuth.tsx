@@ -131,59 +131,22 @@ export const useAuth = () => {
 
   const signIn = async (email: string, password: string, options: SignInOptions = {}): Promise<SignInResult> => {
     const deviceFingerprint = fingerprintDevice();
-
-    const fallbackPasswordSignIn = async (): Promise<SignInResult> => {
-      const { data: fallbackData, error: fallbackError } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.functions.invoke("mfa-verify-login", {
+      body: {
         email,
-        password
-      });
-
-      if (fallbackError) {
-        return { error: new Error(fallbackError.message) };
+        password,
+        code: options.code,
+        backupCode: options.backupCode,
+        deviceFingerprint,
+        deviceName: options.deviceName,
+        rememberDevice: options.rememberDevice,
+        overrideToken: options.overrideToken,
+        passkeyAssertion: options.passkeyAssertion
       }
-
-      if (fallbackData.session) {
-        const { error: setError } = await supabase.auth.setSession({
-          access_token: fallbackData.session.access_token,
-          refresh_token: fallbackData.session.refresh_token
-        });
-        if (setError) {
-          return { error: new Error(setError.message) };
-        }
-      }
-
-      return {};
-    };
-
-    let invokeResponse;
-    try {
-      invokeResponse = await supabase.functions.invoke("mfa-verify-login", {
-        body: {
-          email,
-          password,
-          code: options.code,
-          backupCode: options.backupCode,
-          deviceFingerprint,
-          deviceName: options.deviceName,
-          rememberDevice: options.rememberDevice,
-          overrideToken: options.overrideToken,
-          passkeyAssertion: options.passkeyAssertion
-        }
-      });
-    } catch (invokeError) {
-      console.warn("Falling back to password sign-in due to edge function error", invokeError);
-      return fallbackPasswordSignIn();
-    }
-
-    const { data, error } = invokeResponse ?? {};
+    });
 
     if (error) {
-      const message = error.message ?? "";
-      if (message.includes("Failed to send a request to the Edge Function") || message.includes("Function not found")) {
-        console.warn("Edge function unavailable, using password fallback");
-        return fallbackPasswordSignIn();
-      }
-      return { error: new Error(message || "No se pudo iniciar sesión") };
+      return { error: new Error(error.message) };
     }
 
     if (data?.requiresMfa) {
