@@ -12,6 +12,8 @@ type AuthMode = 'signin' | 'signup';
 
 type AuthMode = 'signin' | 'signup';
 
+type AuthMode = 'signin' | 'signup';
+
 const Auth = () => {
   const { user, signIn, signUp, loading, requestPasskeyChallenge } = useAuth();
   const { toast } = useToast();
