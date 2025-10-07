@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { fingerprintDevice } from '@/lib/security';
@@ -38,41 +38,18 @@ export const useAuth = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fetch user profile
-          const fetchProfile = async () => {
-            try {
-              const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('user_id', session.user.id)
-                .maybeSingle();
-              
-              if (error) {
-                console.error('Error fetching profile:', error);
-              }
-              
-              setProfile(profile);
-              setLoading(false);
-            } catch (error) {
-              console.error('Error fetching profile:', error);
-              setProfile(null);
-              setLoading(false);
-            }
-          };
-          
-          fetchProfile();
-        } else {
-          setProfile(null);
-          setLoading(false);
-        }
+  const loadProfile = useCallback(async (userId: string) => {
+    try {
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        setProfile(null);
+        return;
       }
     );
 
@@ -118,8 +95,30 @@ export const useAuth = () => {
         setLoading(false);
       });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (!isMounted) {
+          return;
+        }
+        applySession(session);
+      })
+      .catch((error) => {
+        console.error('Error getting existing session:', error);
+        if (!isMounted) {
+          return;
+        }
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [applySession]);
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;

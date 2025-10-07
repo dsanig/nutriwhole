@@ -8,6 +8,8 @@ import { startAuthentication } from '@simplewebauthn/browser';
 
 type AuthMode = 'signin' | 'signup';
 
+type AuthMode = 'signin' | 'signup';
+
 const Auth = () => {
   const { user, signIn, signUp, loading, requestPasskeyChallenge } = useAuth();
   const { toast } = useToast();
@@ -37,7 +39,7 @@ const Auth = () => {
     );
   }
 
-  if (user) {
+  if (!loading && user) {
     return <Navigate to="/" replace />;
   }
 
@@ -181,9 +183,9 @@ const Auth = () => {
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handleSignUp = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSubmitting(true);
 
     const { error } = await signUp(signUpData.email, signUpData.password, signUpData.fullName);
 
