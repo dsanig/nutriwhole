@@ -6,10 +6,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { startAuthentication } from '@simplewebauthn/browser';
 
+type AuthMode = 'signin' | 'signup';
+
 const Auth = () => {
   const { user, signIn, signUp, loading, requestPasskeyChallenge } = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const [mode, setMode] = useState<AuthMode>('signin');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [signInData, setSignInData] = useState({ email: '', password: '' });
   const passkeySupported = typeof window !== 'undefined' && 'PublicKeyCredential' in window;
@@ -101,7 +104,7 @@ const Auth = () => {
       setUseBackupCode(false);
     }
 
-    setIsLoading(false);
+    setIsSubmitting(false);
   };
 
   const handlePasskeySignIn = async () => {
@@ -195,9 +198,11 @@ const Auth = () => {
         title: 'Revisa tu correo electrónico',
         description: 'Te enviamos un enlace para confirmar tu cuenta.'
       });
+      setMode('signin');
+      setSignUpData({ email: '', password: '', fullName: '' });
     }
 
-    setIsLoading(false);
+    setIsSubmitting(false);
   };
 
   return (

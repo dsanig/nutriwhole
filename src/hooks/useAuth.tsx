@@ -77,37 +77,46 @@ export const useAuth = () => {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        const fetchProfile = async () => {
-          try {
-            const { data: profile, error } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
-            
-            if (error) {
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          const fetchProfile = async () => {
+            try {
+              const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+
+              if (error) {
+                console.error('Error fetching profile:', error);
+              }
+
+              setProfile(profile);
+              setLoading(false);
+            } catch (error) {
               console.error('Error fetching profile:', error);
+              setProfile(null);
+              setLoading(false);
             }
-            
-            setProfile(profile);
-            setLoading(false);
-          } catch (error) {
-            console.error('Error fetching profile:', error);
-            setProfile(null);
-            setLoading(false);
-          }
-        };
-        
-        fetchProfile();
-      } else {
+          };
+
+          fetchProfile();
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((error) => {
+        console.error('Error getting existing session:', error);
+        setSession(null);
+        setUser(null);
+        setProfile(null);
         setLoading(false);
-      }
-    });
+      });
 
     return () => subscription.unsubscribe();
   }, []);
